@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono); --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring); --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5); --color-chart-4: var(--chart-4); --color-chart-3: var(--chart-3); --color-chart-2: var(--chart-2); --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring); --color-input: var(--input); --color-border: var(--border); --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground); --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground); --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground); --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground); --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground); --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground); --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * .6); --radius-md: calc(var(--radius) * .8); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) * 1.4); --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  color-scheme: light;
+  --background: oklch(.975 .006 145); --foreground: oklch(.19 .024 158);
+  --card: oklch(.998 .002 145); --card-foreground: oklch(.19 .024 158);
+  --popover: oklch(1 0 0); --popover-foreground: oklch(.19 .024 158);
+  --primary: oklch(.37 .09 154); --primary-foreground: oklch(.985 .01 145);
+  --secondary: oklch(.94 .02 150); --secondary-foreground: oklch(.29 .05 155);
+  --muted: oklch(.946 .008 150); --muted-foreground: oklch(.52 .025 155);
+  --accent: oklch(.92 .035 153); --accent-foreground: oklch(.27 .06 155);
+  --destructive: oklch(.59 .21 27); --border: oklch(.895 .012 150); --input: oklch(.88 .015 150); --ring: oklch(.55 .11 154);
+  --chart-1: oklch(.62 .15 152); --chart-2: oklch(.66 .16 292); --chart-3: oklch(.72 .15 74); --chart-4: oklch(.67 .14 230); --chart-5: oklch(.61 .2 28);
+  --radius: .75rem;
+  --sidebar: oklch(.955 .014 148); --sidebar-foreground: oklch(.22 .035 156); --sidebar-primary: oklch(.37 .09 154); --sidebar-primary-foreground: oklch(.985 .01 145);
+  --sidebar-accent: oklch(.92 .025 150); --sidebar-accent-foreground: oklch(.28 .055 155); --sidebar-border: oklch(.875 .018 150); --sidebar-ring: oklch(.55 .11 154);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(.155 .02 158); --foreground: oklch(.94 .012 150);
+  --card: oklch(.19 .025 158); --card-foreground: oklch(.94 .012 150); --popover: oklch(.19 .025 158); --popover-foreground: oklch(.94 .012 150);
+  --primary: oklch(.72 .15 153); --primary-foreground: oklch(.16 .035 157); --secondary: oklch(.24 .035 157); --secondary-foreground: oklch(.9 .018 150);
+  --muted: oklch(.22 .023 158); --muted-foreground: oklch(.67 .025 154); --accent: oklch(.27 .045 155); --accent-foreground: oklch(.92 .015 150);
+  --destructive: oklch(.67 .18 24); --border: oklch(1 0 0 / 11%); --input: oklch(1 0 0 / 15%); --ring: oklch(.68 .13 153);
+  --sidebar: oklch(.175 .024 158); --sidebar-foreground: oklch(.91 .014 150); --sidebar-primary: oklch(.7 .14 153); --sidebar-primary-foreground: oklch(.15 .03 157);
+  --sidebar-accent: oklch(.24 .035 157); --sidebar-accent-foreground: oklch(.92 .015 150); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: oklch(.68 .13 153);
+}
+
+@layer base { * { @apply border-border outline-ring/50; } html { @apply font-sans; } body { @apply bg-background text-foreground; } button { cursor: pointer; } }
