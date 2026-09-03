@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+celerybeat-schedule*
 node_modules/
 .next/
 dist/
@@ -13,4 +14,3 @@ dist/
 .DS_Store
 .idea/
 .vscode/
-
