@@ -2,105 +2,259 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Bell, CalendarDays, Check, CheckCircle2, ChevronDown, Circle, Clock3,
-  Command, LayoutDashboard, ListTodo, Menu, Moon, MoreHorizontal, Plus,
-  Search, Settings, Sparkles, Sun, Tag, TimerReset, X,
+  Bell,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Inbox,
+  ListFilter,
+  Moon,
+  Plus,
+  Search,
+  Save,
+  Settings2,
+  Sparkles,
+  Sun,
+  Target,
+  TimerReset,
+  Trash2,
 } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   authenticateTelegram,
   createRemoteTask,
+  deleteRemoteTask,
   getTelegramInitData,
   loadCurrentUser,
   loadTasks,
   setRemoteTaskCompleted,
+  updateRemoteTask,
+  updateRemoteUser,
   type ApiTask,
 } from '@/lib/api';
 
 type Language = 'ru' | 'en';
-type Filter = 'today' | 'all' | 'upcoming' | 'completed';
+type Filter = 'today' | 'all' | 'completed';
 type Task = {
   id: number;
-  title: { ru: string; en: string };
-  project: { ru: string; en: string };
-  due: string;
-  time: string;
+  title: string;
+  dueAt: string | null;
   priority: 'high' | 'medium' | 'low';
   completed: boolean;
 };
 
-const initialTasks: Task[] = [
-  { id: 1, title: { ru: 'Подготовить презентацию проекта', en: 'Prepare project presentation' }, project: { ru: 'Работа', en: 'Work' }, due: 'today', time: '10:00', priority: 'high', completed: false },
-  { id: 2, title: { ru: '30 минут английского', en: '30 minutes of English' }, project: { ru: 'Развитие', en: 'Growth' }, due: 'today', time: '14:30', priority: 'medium', completed: false },
-  { id: 3, title: { ru: 'Забронировать тренировку', en: 'Book a workout' }, project: { ru: 'Личное', en: 'Personal' }, due: 'today', time: '18:00', priority: 'low', completed: false },
-  { id: 4, title: { ru: 'Ответить на важные письма', en: 'Reply to important emails' }, project: { ru: 'Работа', en: 'Work' }, due: 'today', time: '09:15', priority: 'medium', completed: true },
-  { id: 5, title: { ru: 'Спланировать неделю', en: 'Plan the week' }, project: { ru: 'Развитие', en: 'Growth' }, due: 'tomorrow', time: '09:00', priority: 'medium', completed: false },
+const demoTasks: Task[] = [
+  { id: 1, title: 'Подготовить портфолио проекта', dueAt: new Date(new Date().setHours(12, 30, 0, 0)).toISOString(), priority: 'high', completed: false },
+  { id: 2, title: '30 минут английского', dueAt: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(), priority: 'medium', completed: false },
+  { id: 3, title: 'Спланировать следующую неделю', dueAt: null, priority: 'low', completed: true },
 ];
 
 const copy = {
-  ru: { greeting: 'Доброе утро', subtitle: 'Сегодня отличный день, чтобы закончить важное.', search: 'Найти задачу…', quick: 'Что нужно сделать?', add: 'Добавить', today: 'Сегодня', all: 'Все задачи', upcoming: 'Предстоящие', completed: 'Выполненные', labels: 'Категории', work: 'Работа', personal: 'Личное', growth: 'Развитие', settings: 'Настройки', overview: 'Обзор', progress: 'Прогресс дня', focus: 'В фокусе', remaining: 'осталось', streak: 'Серия', days: 'дней подряд', synced: 'Синхронизировано с Telegram', demo: 'Демонстрационный режим', syncing: 'Подключение к Telegram…', syncError: 'Нет связи с сервером', empty: 'Здесь пока нет задач', hint: 'Добавьте задачу выше или напишите боту.', filters: 'Фильтры', noTime: 'Без времени', start: 'Начать фокус' },
-  en: { greeting: 'Good morning', subtitle: 'A great day to finish what matters.', search: 'Find a task…', quick: 'What needs to be done?', add: 'Add task', today: 'Today', all: 'All tasks', upcoming: 'Upcoming', completed: 'Completed', labels: 'Categories', work: 'Work', personal: 'Personal', growth: 'Growth', settings: 'Settings', overview: 'Overview', progress: 'Today’s progress', focus: 'Focus', remaining: 'remaining', streak: 'Streak', days: 'days in a row', synced: 'Synced with Telegram', demo: 'Demo mode', syncing: 'Connecting to Telegram…', syncError: 'Server unavailable', empty: 'Nothing here yet', hint: 'Add a task above or message the bot.', filters: 'Filters', noTime: 'No time', start: 'Start focus' },
+  ru: {
+    hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', demo: 'Предпросмотр', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', focus: 'Фокус дня', focusHint: 'Одна задача. 25 минут. Без отвлечений.', start: 'Начать', pause: 'Пауза', tasks: 'Задачи', inbox: 'Входящие', settings: 'Настройки', search: 'Поиск', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', preferences: 'Персональные настройки', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть',
+  },
+  en: {
+    hello: 'Good afternoon', lead: 'Stay on course for what matters.', today: 'Today', all: 'All', completed: 'Done', plan: 'Daily plan', left: 'remaining', done: 'completed', add: 'New task', placeholder: 'For example, call Anna at 18:00', create: 'Add', empty: 'All clear here', emptyHint: 'Add a task or message the Telegram bot.', synced: 'Telegram connected', demo: 'Preview mode', connecting: 'Connecting Telegram…', error: 'Could not sync', noTime: 'No time', focus: 'Daily focus', focusHint: 'One task. 25 minutes. No distractions.', start: 'Start', pause: 'Pause', tasks: 'Tasks', inbox: 'Inbox', settings: 'Settings', search: 'Search', edit: 'Edit task', taskName: 'Title', dueDate: 'Date', dueTime: 'Time', priority: 'Priority', low: 'Low', medium: 'Medium', high: 'High', save: 'Save', remove: 'Delete', preferences: 'Personal settings', digest: 'Morning digest', digestTime: 'Digest time', timezone: 'Time zone', close: 'Close',
+  },
 };
 
-const priorityStyles = { high: 'bg-rose-500', medium: 'bg-amber-400', low: 'bg-sky-400' };
+function fromApiTask(task: ApiTask): Task {
+  return { id: task.id, title: task.title, dueAt: task.due_at, priority: task.priority, completed: task.status === 'completed' };
+}
 
-function fromApiTask(task: ApiTask, language: Language): Task {
-  const dueDate = task.due_at ? new Date(task.due_at) : null;
-  const today = new Date();
-  const tomorrow = new Date();
-  tomorrow.setDate(today.getDate() + 1);
-  const dateKey = dueDate?.toDateString();
-  const due = dateKey === today.toDateString() ? 'today' : dateKey === tomorrow.toDateString() ? 'tomorrow' : 'later';
-  return {
-    id: task.id,
-    title: { ru: task.title, en: task.title },
-    project: { ru: 'Входящие', en: 'Inbox' },
-    due,
-    time: dueDate ? new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' }).format(dueDate) : language === 'ru' ? 'Без времени' : 'No time',
-    priority: task.priority,
-    completed: task.status === 'completed',
-  };
+function isToday(value: string | null): boolean {
+  return value ? new Date(value).toDateString() === new Date().toDateString() : true;
+}
+
+function formatTime(value: string | null, language: Language): string {
+  if (!value) return copy[language].noTime;
+  return new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
 export default function Home() {
   const [language, setLanguage] = useState<Language>('ru');
   const [filter, setFilter] = useState<Filter>('today');
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>(demoTasks);
   const [draft, setDraft] = useState('');
-  const [dark, setDark] = useState(false);
-  const [mobileNav, setMobileNav] = useState(false);
-  const [profileName, setProfileName] = useState('Алексей');
+  const [profileName, setProfileName] = useState('Капитан');
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [syncState, setSyncState] = useState<'demo' | 'syncing' | 'live' | 'error'>('demo');
+  const [syncState, setSyncState] = useState<'demo' | 'connecting' | 'live' | 'error'>('demo');
+  const [dark, setDark] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editPriority, setEditPriority] = useState<Task['priority']>('low');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timezoneOffset, setTimezoneOffset] = useState(180);
+  const [digestHour, setDigestHour] = useState(9);
+  const [digestEnabled, setDigestEnabled] = useState(true);
+  const [focusSeconds, setFocusSeconds] = useState(25 * 60);
+  const [focusRunning, setFocusRunning] = useState(false);
   const t = copy[language];
 
   useEffect(() => {
     const initData = getTelegramInitData();
     if (!initData) return;
-    authenticateTelegram(initData).then(async (token) => {
-      const [user, remoteTasks] = await Promise.all([loadCurrentUser(token), loadTasks(token)]);
-      setAccessToken(token);
-      setLanguage(user.language);
-      setProfileName(user.first_name || (user.language === 'ru' ? 'друг' : 'friend'));
-      setTasks(remoteTasks.map((task) => fromApiTask(task, user.language)));
-      setSyncState('live');
-    }).catch(() => setSyncState('error'));
+    authenticateTelegram(initData)
+      .then(async (token) => {
+        const [user, pendingTasks, completedTasks] = await Promise.all([
+          loadCurrentUser(token),
+          loadTasks(token),
+          loadTasks(token, 'completed'),
+        ]);
+        setAccessToken(token);
+        setLanguage(user.language);
+        setProfileName(user.first_name || (user.language === 'ru' ? 'Капитан' : 'Captain'));
+        setTasks([...pendingTasks, ...completedTasks].map(fromApiTask));
+        setTimezoneOffset(user.timezone_offset_minutes);
+        setDigestHour(user.daily_digest_hour);
+        setDigestEnabled(user.daily_digest_enabled);
+        setSyncState('live');
+      })
+      .catch(() => setSyncState('error'));
   }, []);
 
-  const visibleTasks = useMemo(() => {
-    if (filter === 'completed') return tasks.filter((task) => task.completed);
-    if (filter === 'upcoming') return tasks.filter((task) => task.due === 'tomorrow');
-    if (filter === 'today') return tasks.filter((task) => task.due === 'today');
-    return tasks;
-  }, [filter, tasks]);
+  useEffect(() => {
+    if (!focusRunning) return;
+    const timer = window.setInterval(() => {
+      setFocusSeconds((current) => {
+        if (current <= 1) {
+          setFocusRunning(false);
+          return 25 * 60;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [focusRunning]);
 
-  const completed = tasks.filter((task) => task.completed && task.due === 'today').length;
-  const todayCount = tasks.filter((task) => task.due === 'today').length;
-  const progress = Math.round((completed / Math.max(todayCount, 1)) * 100);
+  const visibleTasks = useMemo(() => {
+    const byFilter = filter === 'completed'
+      ? tasks.filter((task) => task.completed)
+      : filter === 'today'
+        ? tasks.filter((task) => isToday(task.dueAt) && !task.completed)
+        : tasks.filter((task) => !task.completed);
+    const normalized = query.trim().toLocaleLowerCase(language === 'ru' ? 'ru-RU' : 'en-US');
+    return normalized ? byFilter.filter((task) => task.title.toLocaleLowerCase().includes(normalized)) : byFilter;
+  }, [filter, language, query, tasks]);
+
+  const todayTasks = tasks.filter((task) => isToday(task.dueAt));
+  const completedToday = todayTasks.filter((task) => task.completed).length;
+  const pendingToday = Math.max(todayTasks.length - completedToday, 0);
+  const progress = Math.round((completedToday / Math.max(todayTasks.length, 1)) * 100);
+  const focusTask = tasks.find((task) => !task.completed);
+
+  async function addTask() {
+    const title = draft.trim();
+    if (!title) return;
+    const optimisticId = Date.now();
+    const optimistic: Task = { id: optimisticId, title, dueAt: null, priority: 'low', completed: false };
+    setTasks((current) => [optimistic, ...current]);
+    setDraft('');
+    if (!accessToken) return;
+    try {
+      const saved = await createRemoteTask(accessToken, title);
+      setTasks((current) => current.map((task) => task.id === optimisticId ? fromApiTask(saved) : task));
+    } catch {
+      setTasks((current) => current.filter((task) => task.id !== optimisticId));
+      setSyncState('error');
+    }
+  }
+
+  async function toggleTask(taskId: number, completed: boolean) {
+    const previous = tasks.find((task) => task.id === taskId)?.completed ?? false;
+    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, completed } : task));
+    if (!accessToken) return;
+    try {
+      await setRemoteTaskCompleted(accessToken, taskId, completed);
+    } catch {
+      setTasks((current) => current.map((task) => task.id === taskId ? { ...task, completed: previous } : task));
+      setSyncState('error');
+    }
+  }
+
+  function openEditor(task: Task) {
+    const due = task.dueAt ? new Date(task.dueAt) : null;
+    setSelectedTask(task);
+    setEditTitle(task.title);
+    setEditDate(due ? `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}` : '');
+    setEditTime(due ? `${String(due.getHours()).padStart(2, '0')}:${String(due.getMinutes()).padStart(2, '0')}` : '');
+    setEditPriority(task.priority);
+  }
+
+  async function saveTask() {
+    if (!selectedTask || !editTitle.trim()) return;
+    const dueAt = editDate
+      ? new Date(`${editDate}T${editTime || '09:00'}:00`).toISOString()
+      : null;
+    const next: Task = { ...selectedTask, title: editTitle.trim(), priority: editPriority, dueAt };
+    setTasks((current) => current.map((task) => task.id === next.id ? next : task));
+    setSelectedTask(null);
+    if (!accessToken) return;
+    try {
+      const saved = await updateRemoteTask(accessToken, next.id, { title: next.title, priority: next.priority, due_at: dueAt });
+      setTasks((current) => current.map((task) => task.id === next.id ? fromApiTask(saved) : task));
+    } catch {
+      setSyncState('error');
+    }
+  }
+
+  async function removeTask() {
+    if (!selectedTask) return;
+    const task = selectedTask;
+    setTasks((current) => current.filter((item) => item.id !== task.id));
+    setSelectedTask(null);
+    if (!accessToken) return;
+    try {
+      await deleteRemoteTask(accessToken, task.id);
+    } catch {
+      setTasks((current) => [task, ...current]);
+      setSyncState('error');
+    }
+  }
+
+  async function saveSettings(fields: {
+    language?: Language;
+    timezone_offset_minutes?: number;
+    daily_digest_hour?: number;
+    daily_digest_enabled?: boolean;
+  }) {
+    if (fields.language) setLanguage(fields.language);
+    if (fields.timezone_offset_minutes !== undefined) setTimezoneOffset(fields.timezone_offset_minutes);
+    if (fields.daily_digest_hour !== undefined) setDigestHour(fields.daily_digest_hour);
+    if (fields.daily_digest_enabled !== undefined) setDigestEnabled(fields.daily_digest_enabled);
+    if (!accessToken) return;
+    try {
+      await updateRemoteUser(accessToken, fields);
+    } catch {
+      setSyncState('error');
+    }
+  }
 
   function toggleTheme() {
     const next = !dark;
@@ -108,158 +262,129 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', next);
   }
 
-  async function addTask() {
-    const title = draft.trim();
-    if (!title) return;
-    const optimisticId = Date.now();
-    setTasks((current) => [{ id: optimisticId, title: { ru: title, en: title }, project: { ru: 'Входящие', en: 'Inbox' }, due: 'today', time: t.noTime, priority: 'low', completed: false }, ...current]);
-    setDraft('');
-    if (accessToken) {
-      try {
-        const saved = await createRemoteTask(accessToken, title);
-        setTasks((current) => current.map((task) => task.id === optimisticId ? fromApiTask(saved, language) : task));
-      } catch {
-        setTasks((current) => current.filter((task) => task.id !== optimisticId));
-        setSyncState('error');
-      }
-    }
-  }
-
-  async function toggleTask(taskId: number, checked: boolean) {
-    const previous = tasks.find((task) => task.id === taskId)?.completed ?? false;
-    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, completed: checked } : task));
-    if (!accessToken) return;
-    try {
-      await setRemoteTaskCompleted(accessToken, taskId, checked);
-    } catch {
-      setTasks((current) => current.map((task) => task.id === taskId ? { ...task, completed: previous } : task));
-      setSyncState('error');
-    }
-  }
-
-  const navigation: Array<{ id: Filter; label: string; icon: typeof CalendarDays; count?: number }> = [
-    { id: 'today', label: t.today, icon: CalendarDays, count: todayCount },
-    { id: 'all', label: t.all, icon: ListTodo, count: tasks.length },
-    { id: 'upcoming', label: t.upcoming, icon: TimerReset },
-    { id: 'completed', label: t.completed, icon: CheckCircle2, count: completed },
+  const filters: Array<{ id: Filter; label: string }> = [
+    { id: 'today', label: t.today },
+    { id: 'all', label: t.all },
+    { id: 'completed', label: t.completed },
   ];
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className={`${mobileNav ? 'flex' : 'hidden'} fixed inset-0 z-40 flex-col border-r border-border bg-sidebar px-4 py-5 lg:static lg:flex lg:min-h-screen`}>
-          <div className="mb-8 flex items-center justify-between px-2">
+      <div className="mx-auto min-h-screen max-w-[760px] overflow-hidden bg-background pb-28 shadow-[0_0_80px_rgba(11,22,37,.08)]">
+        <section className="pilot-hero relative overflow-hidden px-5 pb-8 pt-5 text-white sm:px-8 sm:pt-7">
+          <div className="pilot-orbit" aria-hidden="true" />
+          <header className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[0_8px_24px_-10px_var(--primary)]"><Check className="size-5 stroke-[2.5]" /></span>
-              <span className="text-lg font-semibold tracking-[-0.03em]">TaskPilot</span>
+              <span className="grid size-10 place-items-center rounded-2xl bg-white/12 ring-1 ring-white/15 backdrop-blur"><Check className="size-5 stroke-[2.6] text-[#8df3c7]" /></span>
+              <div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">TaskPilot</p><p className="text-sm font-semibold">{t.plan}</p></div>
             </div>
-            <Button className="lg:hidden" variant="ghost" size="icon" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X /></Button>
-          </div>
-
-          <nav className="space-y-1" aria-label="Main navigation">
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t.overview}</p>
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button key={item.id} onClick={() => { setFilter(item.id); setMobileNav(false); }} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm transition-colors ${filter === item.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-                  <Icon className="size-[17px]" /><span className="flex-1 text-left">{item.label}</span>
-                  {item.count !== undefined && <span className={`text-xs ${filter === item.id ? 'text-primary-foreground/75' : ''}`}>{item.count}</span>}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="mt-8">
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t.labels}</p>
-            {[['bg-violet-500', t.work], ['bg-emerald-500', t.personal], ['bg-sky-500', t.growth]].map(([color, label]) => (
-              <button key={label} className="flex h-9 w-full items-center gap-3 rounded-xl px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><span className={`size-2 rounded-full ${color}`} />{label}</button>
-            ))}
-          </div>
-
-          <div className="mt-auto space-y-3 pt-8">
-            <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Sparkles className="size-3.5 text-amber-500" />{t.streak}</div>
-              <p className="text-2xl font-semibold tracking-tight">12 <span className="text-xs font-normal text-muted-foreground">{t.days}</span></p>
-            </div>
-            <button className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"><Settings className="size-[17px]" /> {t.settings}</button>
-          </div>
-        </aside>
-
-        <section className="min-w-0">
-          <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/80 bg-background/90 px-4 backdrop-blur-xl sm:px-8">
-            <Button className="lg:hidden" variant="ghost" size="icon" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu /></Button>
-            <div className="relative hidden max-w-sm flex-1 sm:block">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-9 border-0 bg-muted/70 pl-9 shadow-none focus-visible:ring-2" placeholder={t.search} />
-              <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground md:flex"><Command className="size-2.5" />K</kbd>
-            </div>
-            <div className="ml-auto flex items-center gap-1.5">
-              <button onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')} className="h-8 rounded-lg px-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted" aria-label="Change language">{language === 'ru' ? 'RU' : 'EN'}</button>
-              <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</Button>
-              <Button variant="ghost" size="icon" aria-label="Notifications" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-rose-500 ring-2 ring-background" /></Button>
-              <div className="ml-1 grid size-8 place-items-center rounded-full bg-[linear-gradient(135deg,#7c3aed,#22c55e)] text-xs font-semibold text-white">A</div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')} className="h-9 rounded-xl px-3 text-xs font-bold text-white/75 transition hover:bg-white/10" aria-label="Change language">{language.toUpperCase()}</button>
+              <Button variant="ghost" size="icon" className="text-white/75 hover:bg-white/10 hover:text-white" onClick={toggleTheme} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</Button>
+              <Button variant="ghost" size="icon" className="relative text-white/75 hover:bg-white/10 hover:text-white" aria-label="Notifications"><Bell /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#fda4af] ring-2 ring-[#111d30]" /></Button>
             </div>
           </header>
 
-          <div className="mx-auto max-w-6xl px-4 py-7 sm:px-8 sm:py-10">
-            <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="mb-1 text-sm capitalize text-muted-foreground">{new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</p>
-                <h1 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">{t.greeting}, {profileName}</h1>
-                <p className="mt-1.5 text-sm text-muted-foreground">{t.subtitle}</p>
-              </div>
-              <Badge variant="outline" className="w-fit gap-1.5 border-emerald-500/25 bg-emerald-500/8 py-1 text-emerald-700 dark:text-emerald-300"><span className={`size-1.5 rounded-full ${syncState === 'error' ? 'bg-rose-500' : syncState === 'syncing' ? 'animate-pulse bg-amber-400' : 'bg-emerald-500'}`} /> {syncState === 'live' ? t.synced : syncState === 'demo' ? t.demo : syncState === 'error' ? t.syncError : t.syncing}</Badge>
+          <div className="relative z-10 mt-10">
+            <p className="text-sm text-white/58">{new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</p>
+            <h1 className="mt-1 text-[2rem] font-semibold tracking-[-0.055em] sm:text-[2.5rem]">{t.hello}, {profileName}</h1>
+            <p className="mt-1 text-sm text-white/58">{t.lead}</p>
+          </div>
+
+          <div className="relative z-10 mt-8 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[1.6rem] border border-white/10 bg-white/[.075] p-4 backdrop-blur-xl">
+            <div>
+              <div className="flex items-baseline gap-2"><span className="text-4xl font-semibold tracking-[-0.06em]">{progress}%</span><span className="text-xs text-white/55">{t.done}</span></div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[linear-gradient(90deg,#7ce8bd,#a7f3d0)] transition-all" style={{ width: `${progress}%` }} /></div>
+              <p className="mt-2 text-xs text-white/55">{pendingToday} {t.left}</p>
             </div>
-
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-              <div className="space-y-5">
-                <div className="rounded-2xl border border-border bg-card p-2 shadow-[0_10px_40px_-28px_rgba(15,23,42,.35)]">
-                  <div className="flex gap-2">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/8 text-primary"><Plus className="size-5" /></span>
-                    <Input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addTask()} placeholder={t.quick} className="h-10 border-0 px-1 shadow-none focus-visible:ring-0" />
-                    <Button onClick={addTask} className="h-10 rounded-xl px-4">{t.add}</Button>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card shadow-[0_16px_50px_-36px_rgba(15,23,42,.35)]">
-                  <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                    <div className="flex items-center gap-2"><h2 className="font-semibold">{navigation.find((item) => item.id === filter)?.label}</h2><Badge variant="secondary">{visibleTasks.length}</Badge></div>
-                    <Button variant="ghost" size="sm"><Tag className="size-3.5" /> {t.filters} <ChevronDown className="size-3.5" /></Button>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {visibleTasks.map((task) => (
-                      <article key={task.id} className="group flex items-start gap-3 px-4 py-4 transition-colors hover:bg-muted/45 sm:px-5">
-                        <Checkbox checked={task.completed} onCheckedChange={(checked) => void toggleTask(task.id, Boolean(checked))} aria-label={`Complete ${task.title[language]}`} className="mt-0.5 size-[18px] rounded-full" />
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-medium ${task.completed ? 'text-muted-foreground line-through' : ''}`}>{task.title[language]}</p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><Clock3 className="size-3" />{task.time}</span><span>·</span><span>{task.project[language]}</span></div>
-                        </div>
-                        <span className={`mt-1.5 size-2 rounded-full ${priorityStyles[task.priority]}`} title={`${task.priority} priority`} />
-                        <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100" aria-label="Task actions"><MoreHorizontal /></Button>
-                      </article>
-                    ))}
-                    {visibleTasks.length === 0 && <div className="grid place-items-center px-6 py-16 text-center"><span className="mb-3 grid size-11 place-items-center rounded-full bg-muted"><Circle className="size-5 text-muted-foreground" /></span><p className="font-medium">{t.empty}</p><p className="mt-1 text-sm text-muted-foreground">{t.hint}</p></div>}
-                  </div>
-                </div>
-              </div>
-
-              <aside className="space-y-4">
-                <div className="overflow-hidden rounded-2xl bg-[#14281f] p-5 text-white shadow-[0_18px_45px_-24px_rgba(20,40,31,.8)] dark:bg-emerald-950">
-                  <div className="mb-7 flex items-center justify-between"><p className="text-sm font-medium text-white/80">{t.progress}</p><LayoutDashboard className="size-4 text-emerald-300" /></div>
-                  <div className="flex items-end justify-between">
-                    <div><p className="text-4xl font-semibold tracking-[-0.05em]">{Math.min(progress, 100)}%</p><p className="mt-1 text-xs text-white/55">{todayCount - completed} {t.remaining}</p></div>
-                    <div className="relative grid size-[76px] place-items-center rounded-full" style={{ background: `conic-gradient(#6ee7b7 ${Math.min(progress, 100)}%, rgba(255,255,255,.12) 0)` }}><div className="grid size-[62px] place-items-center rounded-full bg-[#14281f] text-xs font-semibold dark:bg-emerald-950">{completed}/{todayCount}</div></div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card p-5">
-                  <div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold">{t.focus}</p><TimerReset className="size-4 text-violet-500" /></div>
-                  <div className="rounded-xl bg-violet-500/8 p-4"><p className="text-xs font-medium text-violet-700 dark:text-violet-300">25:00</p><p className="mt-1 line-clamp-2 text-sm font-medium">{tasks.find((task) => !task.completed)?.title[language]}</p><Button size="sm" className="mt-4 w-full bg-violet-600 text-white hover:bg-violet-500"><Clock3 /> {t.start}</Button></div>
-                </div>
-              </aside>
-            </div>
+            <div className="grid size-[78px] place-items-center rounded-full border border-white/10 bg-[#0c1727]/45"><Target className="size-7 text-[#8df3c7]" /></div>
           </div>
         </section>
+
+        <section className="relative z-10 -mt-3 rounded-t-[1.75rem] bg-background px-4 pt-6 sm:px-7">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-[0_18px_50px_-32px_rgba(15,23,42,.45)]">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></span>
+            <Input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void addTask()} placeholder={t.placeholder} className="h-10 min-w-0 border-0 bg-transparent px-1 text-[15px] shadow-none focus-visible:ring-0" />
+            <Button onClick={() => void addTask()} className="h-10 rounded-xl px-4 shadow-sm">{t.create}</Button>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <div className="flex rounded-xl bg-muted p-1">
+              {filters.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition ${filter === item.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>{item.label}</button>)}
+            </div>
+            <Button variant={searchOpen ? 'secondary' : 'ghost'} size="icon" aria-label={t.search} onClick={() => setSearchOpen((current) => !current)}><Search /></Button>
+          </div>
+
+          {searchOpen && (
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${t.search}…`} className="h-11 rounded-xl bg-card pl-9" />
+            </div>
+          )}
+
+          <div className="mt-4 space-y-2.5">
+            {visibleTasks.map((task) => (
+              <article key={task.id} className="group flex items-center gap-3 rounded-2xl border border-border/75 bg-card p-3.5 shadow-[0_10px_35px_-30px_rgba(15,23,42,.55)] transition hover:-translate-y-0.5 hover:border-primary/25">
+                <Checkbox checked={task.completed} onCheckedChange={(checked) => void toggleTask(task.id, Boolean(checked))} aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${task.title}`} className="size-5 rounded-full" />
+                <div className="min-w-0 flex-1"><p className={`truncate text-[15px] font-medium ${task.completed ? 'text-muted-foreground line-through' : ''}`}>{task.title}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3" />{formatTime(task.dueAt, language)}<span className={`ml-1 size-1.5 rounded-full ${task.priority === 'high' ? 'bg-rose-500' : task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} /></p></div>
+                <button onClick={() => openEditor(task)} className="grid size-9 place-items-center rounded-xl text-muted-foreground/60 hover:bg-muted hover:text-foreground" aria-label={t.edit}><ChevronRight className="size-4" /></button>
+              </article>
+            ))}
+            {visibleTasks.length === 0 && (
+              <div className="grid place-items-center rounded-3xl border border-dashed border-border px-6 py-12 text-center"><span className="grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="size-6" /></span><p className="mt-4 font-semibold">{t.empty}</p><p className="mt-1 max-w-[270px] text-sm leading-6 text-muted-foreground">{t.emptyHint}</p></div>
+            )}
+          </div>
+
+          {focusTask && (
+            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-violet-500/15 bg-[linear-gradient(135deg,rgba(124,58,237,.11),rgba(59,130,246,.06))] p-5">
+              <div className="flex items-start justify-between gap-4"><div><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300"><Sparkles className="size-3.5" />{t.focus}</p><p className="mt-2 line-clamp-2 font-semibold">{focusTask.title}</p><p className="mt-1 text-xs text-muted-foreground">{t.focusHint}</p></div><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-600/20"><TimerReset className="size-5" /></span></div>
+              <Button onClick={() => setFocusRunning((current) => !current)} className="mt-5 w-full rounded-xl bg-violet-600 text-white hover:bg-violet-500"><TimerReset />{focusRunning ? t.pause : t.start} · {String(Math.floor(focusSeconds / 60)).padStart(2, '0')}:{String(focusSeconds % 60).padStart(2, '0')}</Button>
+            </div>
+          )}
+
+          <div className={`mx-auto mt-6 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs ${syncState === 'error' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}><span className={`size-1.5 rounded-full ${syncState === 'connecting' ? 'animate-pulse bg-amber-400' : syncState === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />{syncState === 'live' ? t.synced : syncState === 'demo' ? t.demo : syncState === 'connecting' ? t.connecting : t.error}</div>
+        </section>
+
+        <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto flex h-[78px] max-w-[760px] items-start justify-around border-t border-border/80 bg-background/92 px-3 pt-2.5 backdrop-blur-xl" aria-label="Primary navigation">
+          {[
+            { icon: CalendarDays, label: t.tasks, active: !searchOpen && !settingsOpen, action: () => { setFilter('today'); setSearchOpen(false); } },
+            { icon: Inbox, label: t.inbox, active: filter === 'all' && !searchOpen, action: () => { setFilter('all'); setSearchOpen(false); } },
+            { icon: ListFilter, label: t.search, active: searchOpen, action: () => setSearchOpen(true) },
+            { icon: Settings2, label: t.settings, active: settingsOpen, action: () => setSettingsOpen(true) },
+          ].map(({ icon: NavIcon, label, active, action }) => <button key={label} onClick={action} className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium transition ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}><NavIcon className="size-5" />{label}</button>)}
+        </nav>
+
+        <Dialog open={selectedTask !== null} onOpenChange={(open) => !open && setSelectedTask(null)}>
+          <DialogContent className="rounded-3xl p-5 sm:max-w-md">
+            <DialogHeader><DialogTitle>{t.edit}</DialogTitle><DialogDescription>{selectedTask ? `#${selectedTask.id}` : ''}</DialogDescription></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2"><Label htmlFor="task-title">{t.taskName}</Label><Input id="task-title" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label htmlFor="task-date">{t.dueDate}</Label><Input id="task-date" type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} /></div>
+                <div className="space-y-2"><Label htmlFor="task-time">{t.dueTime}</Label><Input id="task-time" type="time" value={editTime} onChange={(event) => setEditTime(event.target.value)} disabled={!editDate} /></div>
+              </div>
+              <div className="space-y-2"><Label>{t.priority}</Label><Select value={editPriority} onValueChange={(value) => setEditPriority(value as Task['priority'])}><SelectTrigger className="h-10 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">🟢 {t.low}</SelectItem><SelectItem value="medium">🟡 {t.medium}</SelectItem><SelectItem value="high">🔴 {t.high}</SelectItem></SelectContent></Select></div>
+            </div>
+            <DialogFooter className="-mx-5 -mb-5 px-5">
+              <Button variant="destructive" onClick={() => void removeTask()}><Trash2 />{t.remove}</Button>
+              <Button onClick={() => void saveTask()}><Save />{t.save}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="rounded-3xl p-5 sm:max-w-md">
+            <DialogHeader><DialogTitle>{t.preferences}</DialogTitle><DialogDescription>{t.settings}</DialogDescription></DialogHeader>
+            <div className="space-y-5 py-2">
+              <div className="flex items-center justify-between gap-4"><Label>{language === 'ru' ? 'Язык' : 'Language'}</Label><div className="flex rounded-xl bg-muted p-1"><button onClick={() => void saveSettings({ language: 'ru' })} className={`rounded-lg px-3 py-1.5 text-sm ${language === 'ru' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>RU</button><button onClick={() => void saveSettings({ language: 'en' })} className={`rounded-lg px-3 py-1.5 text-sm ${language === 'en' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>EN</button></div></div>
+              <div className="flex items-center justify-between gap-4"><Label htmlFor="digest-switch">{t.digest}</Label><Switch id="digest-switch" checked={digestEnabled} onCheckedChange={(checked) => void saveSettings({ daily_digest_enabled: checked })} /></div>
+              <div className="flex items-center justify-between gap-4"><Label>{t.digestTime}</Label><Select value={String(digestHour)} onValueChange={(value) => void saveSettings({ daily_digest_hour: Number(value) })}><SelectTrigger className="h-10 w-28"><SelectValue /></SelectTrigger><SelectContent>{[7, 8, 9, 10, 11].map((hour) => <SelectItem key={hour} value={String(hour)}>{hour}:00</SelectItem>)}</SelectContent></Select></div>
+              <div className="flex items-center justify-between gap-4"><Label>{t.timezone}</Label><Select value={String(timezoneOffset)} onValueChange={(value) => void saveSettings({ timezone_offset_minutes: Number(value) })}><SelectTrigger className="h-10 w-32"><SelectValue /></SelectTrigger><SelectContent>{[-300, 0, 60, 120, 180, 240, 300, 360].map((offset) => <SelectItem key={offset} value={String(offset)}>UTC{offset >= 0 ? '+' : ''}{offset / 60}</SelectItem>)}</SelectContent></Select></div>
+              <div className="flex items-center justify-between gap-4"><Label>{dark ? 'Dark' : 'Light'}</Label><Switch checked={dark} onCheckedChange={toggleTheme} /></div>
+            </div>
+            <DialogFooter className="-mx-5 -mb-5 px-5"><Button onClick={() => setSettingsOpen(false)}>{t.close}</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

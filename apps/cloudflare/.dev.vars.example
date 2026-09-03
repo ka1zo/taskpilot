@@ -1,0 +1,3 @@
+BOT_TOKEN=replace-with-botfather-token
+SESSION_SECRET=replace-with-a-long-random-value
+WEBHOOK_SECRET=replace-with-a-long-random-value

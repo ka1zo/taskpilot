@@ -2,7 +2,7 @@
 
 Telegram-first personal task manager with a bilingual web dashboard, smart reminders and productivity statistics.
 
-[Open the bot](https://t.me/ka1zo1_bot) · [GitHub repository](https://github.com/ka1zo/taskpilot)
+[Open the bot](https://t.me/ka1zo1_bot) · [Open the Mini App](https://taskpilot-ka1zo.dekaganovich14.chatgpt.site) · [GitHub repository](https://github.com/ka1zo/taskpilot)
 
 > Portfolio project: a production-oriented monorepo that demonstrates backend development, Telegram integrations, background jobs, authentication, database design, testing, containerization and frontend UX.
 
@@ -15,7 +15,8 @@ Telegram-first personal task manager with a bilingual web dashboard, smart remin
 - supports Russian and English per user;
 - synchronizes tasks with a responsive light/dark web dashboard;
 - protects web sessions by validating Telegram Mini App signatures;
-- exposes documented FastAPI endpoints for tasks, categories and settings.
+- includes a focus timer, search, task editor, priority controls and digest settings;
+- runs the public demo 24/7 on Cloudflare Workers and D1 without a local computer.
 
 ## Stack
 
@@ -26,21 +27,21 @@ Telegram-first personal task manager with a bilingual web dashboard, smart remin
 | Data | PostgreSQL, SQLAlchemy 2, Alembic |
 | Jobs | Celery, Redis |
 | Web | React 19, TypeScript, Vinext, Tailwind CSS, shadcn/ui |
-| Infrastructure | Docker Compose, GitHub Actions |
+| Production | Cloudflare Workers, D1, cron triggers, Telegram webhooks |
+| Infrastructure | Docker Compose, Wrangler, OpenAI Sites, GitHub Actions |
 | Quality | pytest, Ruff, Oxlint |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    U[Telegram user] --> B[aiogram bot]
-    U --> W[Web dashboard]
-    W -->|signed initData| A[FastAPI API]
-    B --> D[(PostgreSQL)]
-    A --> D
-    C[Celery worker] --> D
-    Q[(Redis)] --> C
-    C -->|reminders| T[Telegram Bot API]
+    U[Telegram user] --> T[Telegram Bot API]
+    T -->|secure webhook| W[Cloudflare Worker]
+    U --> M[TaskPilot Mini App]
+    M -->|validated initData| W
+    W --> D[(Cloudflare D1)]
+    C[Cron trigger] --> W
+    W -->|reminders and digests| T
 ```
 
 ## Quick start
@@ -72,6 +73,9 @@ docker compose run --rm api alembic upgrade head
 | `/new <task>` | Create a task explicitly |
 | `/today` | Tasks due today |
 | `/tasks` | All active tasks |
+| `/done <id>` | Complete a task by ID |
+| `/delete <id>` | Delete a task by ID |
+| `/app` | Open the TaskPilot Mini App |
 | `/language` | Switch Russian/English |
 | `/settings` | Current timezone and digest hour |
 | `/help` | Usage examples |
@@ -87,8 +91,9 @@ The web client sends Telegram Mini App `initData` to `POST /api/v1/auth/telegram
 ```text
 taskpilot/
 ├── apps/
-│   ├── api/          # FastAPI, bot, worker, migrations and tests
-│   └── web/          # responsive bilingual dashboard
+│   ├── api/          # full FastAPI/Docker reference architecture
+│   ├── cloudflare/   # production webhook, D1 API, reminders and tests
+│   └── web/          # responsive bilingual Telegram Mini App
 ├── docs/             # ready-to-use portfolio copy
 ├── .github/workflows # CI for backend and frontend
 ├── docker-compose.yml
@@ -106,19 +111,37 @@ pytest
 
 The test suite covers natural-language task parsing, Telegram signature validation and the API health endpoint. GitHub Actions runs backend and web checks on every push and pull request.
 
-## Deployment plan
+## Production deployment
 
-- **Web:** Cloudflare/OpenAI Sites or another Node-compatible host.
-- **API, bot and workers:** a VPS, Railway, Render or Fly.io using the Docker image.
-- **Database:** managed PostgreSQL.
-- **Queue:** managed Redis.
+- **Bot and API:** Cloudflare Worker using Telegram webhooks.
+- **Data:** Cloudflare D1.
+- **Reminders and digests:** a Worker cron trigger every minute.
+- **Mini App:** OpenAI Sites.
+- **CI:** GitHub Actions validates the Python API, web app and Worker.
 
-Set the production web URL in `WEB_APP_URL`, allow it in `CORS_ORIGINS`, and configure the Mini App URL through BotFather. Never commit `.env`.
+Set the production web URL in `WEB_APP_URL` and configure the Mini App menu button through BotFather or the Telegram Bot API. Never commit `.env`.
+
+### Free Cloudflare deployment
+
+The production Worker is intentionally dependency-light and complements the full
+FastAPI/Docker architecture. It uses Telegram webhooks instead of polling and D1
+instead of PostgreSQL so the public demo can run within the free tier.
+
+```bash
+cd apps/cloudflare
+pnpm install
+pnpm test
+pnpm run check
+pnpm exec wrangler d1 migrations apply taskpilot --remote
+pnpm exec wrangler deploy
+```
+
+Store `BOT_TOKEN`, `SESSION_SECRET`, and `WEBHOOK_SECRET` with `wrangler secret put`.
+They must never be added to `wrangler.jsonc` or committed to Git.
 
 ## Roadmap
 
 - recurring-task materialization;
-- timezone picker and digest settings in the dashboard;
 - advanced search and category filters;
 - CSV/JSON export;
 - rate limiting and observability;

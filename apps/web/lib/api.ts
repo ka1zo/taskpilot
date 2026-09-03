@@ -1,5 +1,7 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? 'https://taskpilot-ka1zo.taskpilot-cloudflare.workers.dev/api/v1'
+    : 'http://localhost:8000/api/v1');
 
 export type ApiTask = {
   id: number;
@@ -16,6 +18,9 @@ export type ApiTask = {
 export type ApiUser = {
   first_name: string | null;
   language: 'ru' | 'en';
+  timezone_offset_minutes: number;
+  daily_digest_hour: number;
+  daily_digest_enabled: boolean;
 };
 
 declare global {
@@ -67,8 +72,8 @@ export function loadCurrentUser(token: string): Promise<ApiUser> {
   return request('/users/me', { headers: authorization(token) });
 }
 
-export async function loadTasks(token: string): Promise<ApiTask[]> {
-  const result = await request<{ items: ApiTask[] }>('/tasks?limit=100', {
+export async function loadTasks(token: string, status: ApiTask['status'] = 'pending'): Promise<ApiTask[]> {
+  const result = await request<{ items: ApiTask[] }>(`/tasks?limit=100&status=${status}`, {
     headers: authorization(token),
   });
   return result.items;
@@ -91,5 +96,35 @@ export function setRemoteTaskCompleted(
     method: 'PATCH',
     headers: authorization(token),
     body: JSON.stringify({ status: completed ? 'completed' : 'pending' }),
+  });
+}
+
+export function updateRemoteTask(
+  token: string,
+  taskId: number,
+  fields: Partial<Pick<ApiTask, 'title' | 'priority' | 'status' | 'due_at'>>,
+): Promise<ApiTask> {
+  return request(`/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: authorization(token),
+    body: JSON.stringify(fields),
+  });
+}
+
+export function deleteRemoteTask(token: string, taskId: number): Promise<void> {
+  return request(`/tasks/${taskId}`, {
+    method: 'DELETE',
+    headers: authorization(token),
+  });
+}
+
+export function updateRemoteUser(
+  token: string,
+  fields: Partial<Pick<ApiUser, 'language' | 'timezone_offset_minutes' | 'daily_digest_hour' | 'daily_digest_enabled'>>,
+): Promise<ApiUser> {
+  return request('/users/me', {
+    method: 'PATCH',
+    headers: authorization(token),
+    body: JSON.stringify(fields),
   });
 }

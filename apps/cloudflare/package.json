@@ -1,0 +1,17 @@
+{
+  "name": "taskpilot-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit && wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test --experimental-strip-types src/index.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3",
+    "wrangler": "4.128.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "taskpilot-ka1zo",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "BOT_USERNAME": "ka1zo1_bot",
+    "WEB_APP_URL": "https://taskpilot-ka1zo.dekaganovich14.chatgpt.site"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "taskpilot",
+      "database_id": "5f18e38b-001a-4abd-9c8d-2c033d146852",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "secrets": {
+    "required": ["BOT_TOKEN", "SESSION_SECRET", "WEBHOOK_SECRET"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}

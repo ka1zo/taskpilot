@@ -49,4 +49,22 @@
   --sidebar-accent: oklch(.24 .035 157); --sidebar-accent-foreground: oklch(.92 .015 150); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: oklch(.68 .13 153);
 }
 
+.pilot-hero {
+  background:
+    radial-gradient(circle at 82% 18%, rgb(124 232 189 / 18%), transparent 23%),
+    radial-gradient(circle at 14% 78%, rgb(139 92 246 / 18%), transparent 30%),
+    linear-gradient(145deg, #0b1626 0%, #13243a 58%, #101b2c 100%);
+}
+
+.pilot-orbit {
+  position: absolute;
+  right: -7rem;
+  top: 3.5rem;
+  width: 19rem;
+  height: 19rem;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3.5rem rgb(255 255 255 / 2.5%), 0 0 0 7rem rgb(255 255 255 / 1.5%);
+}
+
 @layer base { * { @apply border-border outline-ring/50; } html { @apply font-sans; } body { @apply bg-background text-foreground; } button { cursor: pointer; } }
