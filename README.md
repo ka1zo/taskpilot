@@ -14,6 +14,8 @@ Telegram-first personal task manager with a bilingual web dashboard, smart remin
 - lets users complete tasks directly from Telegram;
 - supports Russian and English per user;
 - synchronizes tasks with a responsive light/dark web dashboard;
+- supports task categories, priorities, filters, profile names and confirmed deletion;
+- includes Telegram notification controls, an honest completion streak and a 25-minute focus timer;
 - protects web sessions by validating Telegram Mini App signatures;
 - includes a focus timer, search, task editor, priority controls and digest settings;
 - runs the public demo 24/7 on Cloudflare Workers and D1 without a local computer.

@@ -9,14 +9,17 @@ export type ApiTask = {
   description: string | null;
   status: 'pending' | 'completed' | 'archived';
   priority: 'low' | 'medium' | 'high';
+  category: 'inbox' | 'work' | 'personal' | 'study' | 'health';
   due_at: string | null;
   remind_at: string | null;
   recurrence: string | null;
   category_id: number | null;
+  completed_at: string | null;
 };
 
 export type ApiUser = {
   first_name: string | null;
+  display_name: string | null;
   language: 'ru' | 'en';
   timezone_offset_minutes: number;
   daily_digest_hour: number;
@@ -79,11 +82,16 @@ export async function loadTasks(token: string, status: ApiTask['status'] = 'pend
   return result.items;
 }
 
-export function createRemoteTask(token: string, title: string): Promise<ApiTask> {
+export function createRemoteTask(
+  token: string,
+  title: string,
+  priority: ApiTask['priority'],
+  category: ApiTask['category'],
+): Promise<ApiTask> {
   return request('/tasks', {
     method: 'POST',
     headers: authorization(token),
-    body: JSON.stringify({ title, priority: 'low' }),
+    body: JSON.stringify({ title, priority, category }),
   });
 }
 
@@ -102,7 +110,7 @@ export function setRemoteTaskCompleted(
 export function updateRemoteTask(
   token: string,
   taskId: number,
-  fields: Partial<Pick<ApiTask, 'title' | 'priority' | 'status' | 'due_at'>>,
+  fields: Partial<Pick<ApiTask, 'title' | 'priority' | 'category' | 'status' | 'due_at'>>,
 ): Promise<ApiTask> {
   return request(`/tasks/${taskId}`, {
     method: 'PATCH',
@@ -120,11 +128,18 @@ export function deleteRemoteTask(token: string, taskId: number): Promise<void> {
 
 export function updateRemoteUser(
   token: string,
-  fields: Partial<Pick<ApiUser, 'language' | 'timezone_offset_minutes' | 'daily_digest_hour' | 'daily_digest_enabled'>>,
+  fields: Partial<Pick<ApiUser, 'display_name' | 'language' | 'timezone_offset_minutes' | 'daily_digest_hour' | 'daily_digest_enabled'>>,
 ): Promise<ApiUser> {
   return request('/users/me', {
     method: 'PATCH',
     headers: authorization(token),
     body: JSON.stringify(fields),
+  });
+}
+
+export function sendTestNotification(token: string): Promise<{ ok: true }> {
+  return request('/notifications/test', {
+    method: 'POST',
+    headers: authorization(token),
   });
 }

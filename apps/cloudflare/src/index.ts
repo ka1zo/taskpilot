@@ -1,6 +1,7 @@
 type Language = 'ru' | 'en';
 type TaskStatus = 'pending' | 'completed' | 'archived';
 type Priority = 'low' | 'medium' | 'high';
+type TaskCategory = 'inbox' | 'work' | 'personal' | 'study' | 'health';
 
 type TelegramUser = {
   id: number;
@@ -32,6 +33,7 @@ type UserRow = {
   telegram_id: number;
   username: string | null;
   first_name: string | null;
+  display_name: string | null;
   language: Language;
   timezone_offset_minutes: number;
   daily_digest_hour: number;
@@ -45,6 +47,7 @@ type TaskRow = {
   title: string;
   status: TaskStatus;
   priority: Priority;
+  category: TaskCategory;
   due_at: string | null;
   remind_at: string | null;
   reminder_sent: number;
@@ -364,12 +367,18 @@ function settingsKeyboard(user: UserRow): Record<string, unknown> {
   ] };
 }
 
-async function createTask(env: Env, owner: UserRow, rawText: string, priority: Priority = 'low'): Promise<TaskRow> {
+async function createTask(
+  env: Env,
+  owner: UserRow,
+  rawText: string,
+  priority: Priority = 'low',
+  category: TaskCategory = 'inbox',
+): Promise<TaskRow> {
   const parsed = parseTaskText(rawText, new Date(), owner.timezone_offset_minutes);
   const task = await env.DB.prepare(
-    `INSERT INTO tasks (owner_id, title, priority, due_at, remind_at)
-     VALUES (?1, ?2, ?3, ?4, ?4) RETURNING *`,
-  ).bind(owner.telegram_id, parsed.title, priority, parsed.dueAt).first<TaskRow>();
+    `INSERT INTO tasks (owner_id, title, priority, category, due_at, remind_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?5) RETURNING *`,
+  ).bind(owner.telegram_id, parsed.title, priority, category, parsed.dueAt).first<TaskRow>();
   if (!task) throw new Error('Could not create task');
   return task;
 }
@@ -420,7 +429,7 @@ async function handleMessage(env: Env, message: TelegramMessage): Promise<void> 
   const argument = text.slice(rawCommand.length).trim();
 
   if (command === '/start') {
-    const name = htmlEscape(user.first_name || (user.language === 'ru' ? 'друг' : 'friend'));
+    const name = htmlEscape(user.display_name || user.first_name || (user.language === 'ru' ? 'друг' : 'friend'));
     const welcome = user.language === 'ru'
       ? `Привет, <b>${name}</b>! Я TaskPilot — твой персональный менеджер задач.\n\nОтправь задачу обычным сообщением:\n<code>Подготовить презентацию завтра 14:30</code>\n\nЯ сохраню её, напомню вовремя и покажу в Mini App.`
       : `Hi, <b>${name}</b>! I am TaskPilot — your personal task manager.\n\nSend a task as a normal message:\n<code>Prepare the presentation tomorrow 14:30</code>\n\nI will save it, remind you on time, and show it in the Mini App.`;
@@ -580,12 +589,18 @@ function corsHeaders(request: Request, env: Env): HeadersInit {
 function taskJson(task: TaskRow): Record<string, unknown> {
   return {
     id: task.id, title: task.title, description: null, status: task.status, priority: task.priority,
-    due_at: task.due_at, remind_at: task.remind_at, recurrence: null, category_id: null,
+    category: task.category, due_at: task.due_at, remind_at: task.remind_at,
+    recurrence: null, category_id: null, completed_at: task.completed_at,
   };
 }
 
 function parsePriority(value: unknown): Priority | null {
   return value === 'low' || value === 'medium' || value === 'high' ? value : null;
+}
+
+function parseCategory(value: unknown): TaskCategory | null {
+  return value === 'inbox' || value === 'work' || value === 'personal'
+    || value === 'study' || value === 'health' ? value : null;
 }
 
 function parseStatus(value: unknown): TaskStatus | null {
@@ -617,7 +632,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
   if (url.pathname === '/api/v1/users/me' && request.method === 'GET') {
     return json({
-      first_name: user.first_name, language: user.language,
+      first_name: user.first_name, display_name: user.display_name, language: user.language,
       timezone_offset_minutes: user.timezone_offset_minutes,
       daily_digest_hour: user.daily_digest_hour,
       daily_digest_enabled: user.daily_digest_enabled === 1,
@@ -626,6 +641,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (url.pathname === '/api/v1/users/me' && request.method === 'PATCH') {
     const body = await readJson(request, 16_000);
     if (!isRecord(body)) return json({ detail: 'Invalid settings' }, 422, cors);
+    const displayName = body.display_name === undefined
+      ? user.display_name
+      : isString(body.display_name) && body.display_name.trim().length <= 64
+        ? body.display_name.trim() || null
+        : undefined;
+    if (displayName === undefined) return json({ detail: 'Invalid display name' }, 422, cors);
     const language = body.language === 'ru' || body.language === 'en' ? body.language : user.language;
     const offset = Number.isInteger(body.timezone_offset_minutes) && Number(body.timezone_offset_minutes) >= -720 && Number(body.timezone_offset_minutes) <= 840
       ? Number(body.timezone_offset_minutes) : user.timezone_offset_minutes;
@@ -633,10 +654,16 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       ? Number(body.daily_digest_hour) : user.daily_digest_hour;
     const digestEnabled = typeof body.daily_digest_enabled === 'boolean' ? Number(body.daily_digest_enabled) : user.daily_digest_enabled;
     await env.DB.prepare(
-      `UPDATE users SET language = ?1, timezone_offset_minutes = ?2,
-       daily_digest_hour = ?3, daily_digest_enabled = ?4 WHERE telegram_id = ?5`,
-    ).bind(language, offset, digestHour, digestEnabled, userId).run();
-    return json({ first_name: user.first_name, language, timezone_offset_minutes: offset, daily_digest_hour: digestHour, daily_digest_enabled: digestEnabled === 1 }, 200, cors);
+      `UPDATE users SET display_name = ?1, language = ?2, timezone_offset_minutes = ?3,
+       daily_digest_hour = ?4, daily_digest_enabled = ?5 WHERE telegram_id = ?6`,
+    ).bind(displayName, language, offset, digestHour, digestEnabled, userId).run();
+    return json({ first_name: user.first_name, display_name: displayName, language, timezone_offset_minutes: offset, daily_digest_hour: digestHour, daily_digest_enabled: digestEnabled === 1 }, 200, cors);
+  }
+  if (url.pathname === '/api/v1/notifications/test' && request.method === 'POST') {
+    await sendMessage(env, userId, user.language === 'ru'
+      ? '🔔 <b>TaskPilot на связи</b>\nУведомления работают. Напоминания будут приходить сюда, в Telegram.'
+      : '🔔 <b>TaskPilot is connected</b>\nNotifications work. Your reminders will arrive here in Telegram.');
+    return json({ ok: true }, 200, cors);
   }
   if (url.pathname === '/api/v1/tasks' && request.method === 'GET') {
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 100, 1), 100);
@@ -654,7 +681,8 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     const title = body.title.trim();
     if (!title || title.length > 500) return json({ detail: 'Invalid title' }, 422, cors);
     const priority = parsePriority(body.priority) || 'low';
-    const task = await createTask(env, user, title, priority);
+    const category = parseCategory(body.category) || 'inbox';
+    const task = await createTask(env, user, title, priority, category);
     if (body.due_at !== undefined) {
       const dueAt = parseNullableDate(body.due_at);
       if (dueAt === undefined) return json({ detail: 'Invalid due date' }, 422, cors);
@@ -675,13 +703,14 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (!title || title.length > 500) return json({ detail: 'Invalid title' }, 422, cors);
     const status = body.status === undefined ? current.status : parseStatus(body.status);
     const priority = body.priority === undefined ? current.priority : parsePriority(body.priority);
+    const category = body.category === undefined ? current.category : parseCategory(body.category);
     const dueAt = body.due_at === undefined ? current.due_at : parseNullableDate(body.due_at);
-    if (!status || !priority || dueAt === undefined) return json({ detail: 'Invalid task fields' }, 422, cors);
+    if (!status || !priority || !category || dueAt === undefined) return json({ detail: 'Invalid task fields' }, 422, cors);
     const completedAt = status === 'completed' ? current.completed_at || new Date().toISOString() : null;
     await env.DB.prepare(
-      `UPDATE tasks SET title = ?1, status = ?2, priority = ?3, due_at = ?4,
-       remind_at = ?4, reminder_sent = 0, completed_at = ?5 WHERE id = ?6 AND owner_id = ?7`,
-    ).bind(title, status, priority, dueAt, completedAt, taskId, userId).run();
+      `UPDATE tasks SET title = ?1, status = ?2, priority = ?3, category = ?4, due_at = ?5,
+       remind_at = ?5, reminder_sent = 0, completed_at = ?6 WHERE id = ?7 AND owner_id = ?8`,
+    ).bind(title, status, priority, category, dueAt, completedAt, taskId, userId).run();
     const updated = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?1 AND owner_id = ?2').bind(taskId, userId).first<TaskRow>();
     return updated ? json(taskJson(updated), 200, cors) : json({ detail: 'Task not found' }, 404, cors);
   }
