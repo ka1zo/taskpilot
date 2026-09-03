@@ -24,3 +24,21 @@ def test_plain_text_has_no_deadline() -> None:
     parsed = parse_task_text("Read Clean Architecture")
     assert parsed.title == "Read Clean Architecture"
     assert parsed.due_at is None
+
+
+def test_parses_time_without_explicit_day() -> None:
+    reference = datetime(2026, 9, 3, 17, 0, tzinfo=ZoneInfo("Europe/Moscow"))
+    parsed = parse_task_text("Купить молоко в 18:00", reference_time=reference)
+
+    assert parsed.title == "Купить молоко"
+    assert parsed.due_at is not None
+    assert parsed.due_at.isoformat() == "2026-09-03T18:00:00+03:00"
+
+
+def test_rolls_time_without_day_to_tomorrow_when_needed() -> None:
+    reference = datetime(2026, 9, 3, 19, 0, tzinfo=ZoneInfo("Europe/Moscow"))
+    parsed = parse_task_text("Buy milk at 18:00", reference_time=reference)
+
+    assert parsed.title == "Buy milk"
+    assert parsed.due_at is not None
+    assert parsed.due_at.isoformat() == "2026-09-04T18:00:00+03:00"

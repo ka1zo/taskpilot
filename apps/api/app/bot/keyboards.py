@@ -17,7 +17,8 @@ def language_keyboard() -> InlineKeyboardMarkup:
 def task_keyboard(task_id: int, language: str) -> InlineKeyboardMarkup:
     done = "✅ Выполнить" if language == "ru" else "✅ Complete"
     buttons = [[InlineKeyboardButton(text=done, callback_data=f"done:{task_id}")]]
-    if settings.web_app_url:
+    # Telegram accepts Web App buttons only for publicly reachable HTTPS URLs.
+    if settings.web_app_url.lower().startswith("https://"):
         label = "Открыть панель ↗" if language == "ru" else "Open dashboard ↗"
         buttons.append(
             [InlineKeyboardButton(text=label, web_app=WebAppInfo(url=settings.web_app_url))]

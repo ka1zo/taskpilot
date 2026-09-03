@@ -13,10 +13,15 @@ class ParsedTask:
     due_at: datetime | None
 
 
-def parse_task_text(text: str, timezone_name: str = "Europe/Moscow") -> ParsedTask:
+def parse_task_text(
+    text: str,
+    timezone_name: str = "Europe/Moscow",
+    *,
+    reference_time: datetime | None = None,
+) -> ParsedTask:
     """Parse compact input such as `Call Anna tomorrow 14:30` or its Russian equivalent."""
     tz = ZoneInfo(timezone_name)
-    now = datetime.now(tz)
+    now = reference_time.astimezone(tz) if reference_time else datetime.now(tz)
     normalized = text.strip()
     lower = normalized.lower()
     day = None
@@ -46,6 +51,15 @@ def parse_task_text(text: str, timezone_name: str = "Europe/Moscow") -> ParsedTa
     if time_match:
         clock = time(int(time_match.group(1)), int(time_match.group(2)))
         normalized = TIME_PATTERN.sub("", normalized, count=1)
+
+    if clock and day is None:
+        day = now.date()
+        if datetime.combine(day, clock, tzinfo=tz) <= now:
+            day += timedelta(days=1)
+
+    if clock:
+        # Remove a dangling preposition left by phrases such as "в 18:00" or "at 18:00".
+        normalized = re.sub(r"\s+(?:в|at)\s*$", "", normalized, flags=re.IGNORECASE)
 
     due_at = datetime.combine(day, clock or time(9), tzinfo=tz) if day else None
     title = re.sub(r"\s{2,}", " ", normalized).strip(" |,.-")
