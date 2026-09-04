@@ -24,6 +24,7 @@ export type ApiUser = {
   timezone_offset_minutes: number;
   daily_digest_hour: number;
   daily_digest_enabled: boolean;
+  streak_count: number;
 };
 
 declare global {

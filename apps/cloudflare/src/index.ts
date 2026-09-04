@@ -39,6 +39,8 @@ type UserRow = {
   daily_digest_hour: number;
   daily_digest_enabled: number;
   last_digest_date: string | null;
+  streak_count: number;
+  streak_last_completed_at: string | null;
 };
 
 type TaskRow = {
@@ -246,6 +248,18 @@ function dateAtOffset(year: number, month: number, day: number, hour: number, mi
   return new Date(Date.UTC(year, month - 1, day, hour, minute) - offsetMinutes * 60_000);
 }
 
+function localDateKey(date: Date, offsetMinutes: number): string {
+  const parts = partsAtOffset(date, offsetMinutes);
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+}
+
+function activeStreak(user: UserRow, now = new Date()): number {
+  if (!user.streak_last_completed_at) return 0;
+  const last = new Date(user.streak_last_completed_at);
+  if (!Number.isFinite(last.getTime()) || now.getTime() - last.getTime() > DAY_MS) return 0;
+  return Math.min(Math.max(user.streak_count, 0), 1000);
+}
+
 export function parseTaskText(text: string, now = new Date(), offsetMinutes = 180): { title: string; dueAt: string | null } {
   let normalized = text.trim();
   let dayOffset: number | null = null;
@@ -413,11 +427,30 @@ async function sendTaskList(env: Env, chatId: number, user: UserRow, todayOnly: 
 }
 
 async function changeTaskStatus(env: Env, ownerId: number, taskId: number, status: TaskStatus): Promise<boolean> {
-  const completedAt = status === 'completed' ? new Date().toISOString() : null;
-  const result = await env.DB.prepare(
-    'UPDATE tasks SET status = ?1, completed_at = ?2 WHERE id = ?3 AND owner_id = ?4',
-  ).bind(status, completedAt, taskId, ownerId).run();
-  return result.meta.changes > 0;
+  const current = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?1 AND owner_id = ?2')
+    .bind(taskId, ownerId).first<TaskRow>();
+  if (!current || current.status === 'archived') return false;
+  const completedAt = status === 'completed' ? current.completed_at || new Date().toISOString() : null;
+  if (status !== 'completed' || current.status === 'completed') {
+    const result = await env.DB.prepare(
+      'UPDATE tasks SET status = ?1, completed_at = ?2 WHERE id = ?3 AND owner_id = ?4',
+    ).bind(status, completedAt, taskId, ownerId).run();
+    return result.meta.changes > 0;
+  }
+  const user = await env.DB.prepare('SELECT * FROM users WHERE telegram_id = ?1').bind(ownerId).first<UserRow>();
+  if (!user) return false;
+  const now = new Date(completedAt || new Date().toISOString());
+  const previous = user.streak_last_completed_at ? new Date(user.streak_last_completed_at) : null;
+  const stillActive = previous && Number.isFinite(previous.getTime()) && now.getTime() - previous.getTime() <= DAY_MS;
+  const sameDay = previous && localDateKey(previous, user.timezone_offset_minutes) === localDateKey(now, user.timezone_offset_minutes);
+  const nextStreak = sameDay ? activeStreak(user, now) : stillActive ? Math.min(activeStreak(user, now) + 1, 1000) : 1;
+  const results = await env.DB.batch([
+    env.DB.prepare('UPDATE tasks SET status = ?1, completed_at = ?2 WHERE id = ?3 AND owner_id = ?4')
+      .bind(status, completedAt, taskId, ownerId),
+    env.DB.prepare('UPDATE users SET streak_count = ?1, streak_last_completed_at = ?2 WHERE telegram_id = ?3')
+      .bind(nextStreak, completedAt, ownerId),
+  ]);
+  return results[0].meta.changes > 0;
 }
 
 async function handleMessage(env: Env, message: TelegramMessage): Promise<void> {
@@ -636,6 +669,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       timezone_offset_minutes: user.timezone_offset_minutes,
       daily_digest_hour: user.daily_digest_hour,
       daily_digest_enabled: user.daily_digest_enabled === 1,
+      streak_count: activeStreak(user),
     }, 200, cors);
   }
   if (url.pathname === '/api/v1/users/me' && request.method === 'PATCH') {
@@ -657,7 +691,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       `UPDATE users SET display_name = ?1, language = ?2, timezone_offset_minutes = ?3,
        daily_digest_hour = ?4, daily_digest_enabled = ?5 WHERE telegram_id = ?6`,
     ).bind(displayName, language, offset, digestHour, digestEnabled, userId).run();
-    return json({ first_name: user.first_name, display_name: displayName, language, timezone_offset_minutes: offset, daily_digest_hour: digestHour, daily_digest_enabled: digestEnabled === 1 }, 200, cors);
+    return json({ first_name: user.first_name, display_name: displayName, language, timezone_offset_minutes: offset, daily_digest_hour: digestHour, daily_digest_enabled: digestEnabled === 1, streak_count: activeStreak(user) }, 200, cors);
   }
   if (url.pathname === '/api/v1/notifications/test' && request.method === 'POST') {
     await sendMessage(env, userId, user.language === 'ru'
@@ -711,6 +745,15 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       `UPDATE tasks SET title = ?1, status = ?2, priority = ?3, category = ?4, due_at = ?5,
        remind_at = ?5, reminder_sent = 0, completed_at = ?6 WHERE id = ?7 AND owner_id = ?8`,
     ).bind(title, status, priority, category, dueAt, completedAt, taskId, userId).run();
+    if (status === 'completed' && current.status !== 'completed') {
+      const previous = user.streak_last_completed_at ? new Date(user.streak_last_completed_at) : null;
+      const now = new Date(completedAt || new Date().toISOString());
+      const stillActive = previous && Number.isFinite(previous.getTime()) && now.getTime() - previous.getTime() <= DAY_MS;
+      const sameDay = previous && localDateKey(previous, user.timezone_offset_minutes) === localDateKey(now, user.timezone_offset_minutes);
+      const nextStreak = sameDay ? activeStreak(user, now) : stillActive ? Math.min(activeStreak(user, now) + 1, 1000) : 1;
+      await env.DB.prepare('UPDATE users SET streak_count = ?1, streak_last_completed_at = ?2 WHERE telegram_id = ?3')
+        .bind(nextStreak, completedAt, userId).run();
+    }
     const updated = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?1 AND owner_id = ?2').bind(taskId, userId).first<TaskRow>();
     return updated ? json(taskJson(updated), 200, cors) : json({ detail: 'Task not found' }, 404, cors);
   }

@@ -11,7 +11,6 @@ import {
   Inbox,
   Flame,
   ListFilter,
-  Moon,
   Plus,
   Search,
   Save,
@@ -19,7 +18,6 @@ import {
   Settings2,
   SlidersHorizontal,
   Sparkles,
-  Sun,
   Target,
   TimerReset,
   Trash2,
@@ -92,10 +90,10 @@ const demoTasks: Task[] = [
 
 const copy = {
   ru: {
-    hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', demo: 'Предпросмотр', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', focus: 'Фокус-сессия', focusHint: 'Выберите задачу и работайте над ней 25 минут без отвлечений.', start: 'Начать', pause: 'Пауза', reset: 'Сбросить', finishTask: 'Отметить выполненной', focusDone: 'Сессия завершена — отличная работа!', tasks: 'Задачи', inbox: 'Входящие', settings: 'Настройки', search: 'Поиск', filters: 'Фильтры', resetFilters: 'Сбросить фильтры', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', category: 'Категория', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', removeTitle: 'Удалить задачу?', removeHint: 'Задача будет удалена из активного списка.', cancel: 'Отмена', preferences: 'Персональные настройки', yourName: 'Ваше имя', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть', notifications: 'Уведомления', notificationsHint: 'Напоминания приходят в чат с ботом в Telegram.', testNotification: 'Отправить тест', testSent: 'Тест отправлен в Telegram', streak: 'дней серии',
+    hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', demo: 'Предпросмотр', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', upcoming: 'Ближайшие задачи', noUpcoming: 'Нет задач с будущим временем', focus: 'Фокус-сессия', focusHint: 'Выберите одну задачу: таймер даст 25 минут непрерывной работы, затем её можно сразу завершить или выбрать следующую.', start: 'Начать фокус', pause: 'Пауза', reset: 'Сбросить', finishTask: 'Отметить выполненной', focusDone: 'Сессия завершена — отличная работа!', tasks: 'Обзор', inbox: 'Все задачи', settings: 'Настройки', search: 'Поиск', filters: 'Фильтры', resetFilters: 'Сбросить фильтры', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', category: 'Цвет и категория', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', removeTitle: 'Удалить задачу?', removeHint: 'Задача будет удалена из активного списка.', cancel: 'Отмена', profile: 'Профиль', profileHint: 'Имя, серия и ваша статистика TaskPilot.', preferences: 'Персональные настройки', yourName: 'Имя для приветствия', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть', notifications: 'Уведомления', notificationsHint: 'Здесь настраиваются утренняя сводка и напоминания о задачах. Все сообщения приходят в чат с ботом в Telegram.', testNotification: 'Отправить тест', testSent: 'Тест отправлен в Telegram', streak: 'дней серии',
   },
   en: {
-    hello: 'Good afternoon', lead: 'Stay on course for what matters.', today: 'Today', all: 'All', completed: 'Done', plan: 'Daily plan', left: 'remaining', done: 'completed', add: 'New task', placeholder: 'For example, call Anna at 18:00', create: 'Add', empty: 'All clear here', emptyHint: 'Add a task or message the Telegram bot.', synced: 'Telegram connected', demo: 'Preview mode', connecting: 'Connecting Telegram…', error: 'Could not sync', noTime: 'No time', focus: 'Focus session', focusHint: 'Choose one task and work on it for 25 distraction-free minutes.', start: 'Start', pause: 'Pause', reset: 'Reset', finishTask: 'Mark task complete', focusDone: 'Session complete — great work!', tasks: 'Tasks', inbox: 'Inbox', settings: 'Settings', search: 'Search', filters: 'Filters', resetFilters: 'Reset filters', edit: 'Edit task', taskName: 'Title', dueDate: 'Date', dueTime: 'Time', priority: 'Priority', category: 'Category', low: 'Low', medium: 'Medium', high: 'High', save: 'Save', remove: 'Delete', removeTitle: 'Delete this task?', removeHint: 'The task will be removed from your active list.', cancel: 'Cancel', preferences: 'Personal settings', yourName: 'Your name', digest: 'Morning digest', digestTime: 'Digest time', timezone: 'Time zone', close: 'Close', notifications: 'Notifications', notificationsHint: 'Reminders are delivered to your Telegram chat with the bot.', testNotification: 'Send a test', testSent: 'Test sent to Telegram', streak: 'day streak',
+    hello: 'Good afternoon', lead: 'Stay on course for what matters.', today: 'Today', all: 'All', completed: 'Done', plan: 'Daily plan', left: 'remaining', done: 'completed', add: 'New task', placeholder: 'For example, call Anna at 18:00', create: 'Add', empty: 'All clear here', emptyHint: 'Add a task or message the Telegram bot.', synced: 'Telegram connected', demo: 'Preview mode', connecting: 'Connecting Telegram…', error: 'Could not sync', noTime: 'No time', upcoming: 'Upcoming tasks', noUpcoming: 'No tasks with a future time', focus: 'Focus session', focusHint: 'Choose one task: the timer gives you 25 uninterrupted minutes, then you can complete it or pick the next one.', start: 'Start focus', pause: 'Pause', reset: 'Reset', finishTask: 'Mark task complete', focusDone: 'Session complete — great work!', tasks: 'Overview', inbox: 'All tasks', settings: 'Settings', search: 'Search', filters: 'Filters', resetFilters: 'Reset filters', edit: 'Edit task', taskName: 'Title', dueDate: 'Date', dueTime: 'Time', priority: 'Priority', category: 'Color and category', low: 'Low', medium: 'Medium', high: 'High', save: 'Save', remove: 'Delete', removeTitle: 'Delete this task?', removeHint: 'The task will be removed from your active list.', cancel: 'Cancel', profile: 'Profile', profileHint: 'Your name, streak and TaskPilot stats.', preferences: 'Personal settings', yourName: 'Greeting name', digest: 'Morning digest', digestTime: 'Digest time', timezone: 'Time zone', close: 'Close', notifications: 'Notifications', notificationsHint: 'Configure task reminders and the morning digest here. Messages are delivered to your Telegram chat with the bot.', testNotification: 'Send a test', testSent: 'Test sent to Telegram', streak: 'day streak',
   },
 };
 
@@ -113,25 +111,9 @@ function categoryLabel(category: TaskCategory, language: Language): string {
 }
 
 function categoryColor(category: TaskCategory): string {
-  return { inbox: 'bg-slate-400', work: 'bg-sky-500', personal: 'bg-violet-500', study: 'bg-amber-400', health: 'bg-emerald-500' }[category];
+  return { inbox: 'bg-sky-500', work: 'bg-indigo-500', personal: 'bg-rose-500', study: 'bg-amber-400', health: 'bg-emerald-500' }[category];
 }
 
-function localDay(value: string): string {
-  const date = new Date(value);
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
-function calculateStreak(tasks: Task[]): number {
-  const completedDays = new Set(tasks.filter((task) => task.completedAt).map((task) => localDay(task.completedAt!)));
-  const cursor = new Date();
-  if (!completedDays.has(localDay(cursor.toISOString()))) cursor.setDate(cursor.getDate() - 1);
-  let streak = 0;
-  while (completedDays.has(localDay(cursor.toISOString()))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
 
 function isToday(value: string | null): boolean {
   return value ? new Date(value).toDateString() === new Date().toDateString() : true;
@@ -163,6 +145,7 @@ export default function Home() {
   const [editPriority, setEditPriority] = useState<Task['priority']>('low');
   const [editCategory, setEditCategory] = useState<TaskCategory>('inbox');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
@@ -176,6 +159,8 @@ export default function Home() {
   const [focusFinished, setFocusFinished] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<number | null>(null);
   const [notificationTestState, setNotificationTestState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [streak, setStreak] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const t = copy[language];
 
   useEffect(() => {
@@ -197,9 +182,15 @@ export default function Home() {
         setTimezoneOffset(user.timezone_offset_minutes);
         setDigestHour(user.daily_digest_hour);
         setDigestEnabled(user.daily_digest_enabled);
+        setStreak(user.streak_count);
         setSyncState('live');
       })
       .catch(() => setSyncState('error'));
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -221,13 +212,13 @@ export default function Home() {
     const byFilter = filter === 'completed'
       ? tasks.filter((task) => task.completed)
       : filter === 'today'
-        ? tasks.filter((task) => isToday(task.dueAt) && !task.completed)
+        ? tasks.filter((task) => !task.completed && (!task.dueAt || (isToday(task.dueAt) && new Date(task.dueAt).getTime() >= now)))
         : tasks.filter((task) => !task.completed);
     const normalized = query.trim().toLocaleLowerCase(language === 'ru' ? 'ru-RU' : 'en-US');
     const byCategory = categoryFilter === 'all' ? byFilter : byFilter.filter((task) => task.category === categoryFilter);
     const byPriority = priorityFilter === 'all' ? byCategory : byCategory.filter((task) => task.priority === priorityFilter);
     return normalized ? byPriority.filter((task) => task.title.toLocaleLowerCase().includes(normalized)) : byPriority;
-  }, [categoryFilter, filter, language, priorityFilter, query, tasks]);
+  }, [categoryFilter, filter, language, now, priorityFilter, query, tasks]);
 
   const todayTasks = tasks.filter((task) => isToday(task.dueAt));
   const completedToday = todayTasks.filter((task) => task.completed).length;
@@ -235,7 +226,10 @@ export default function Home() {
   const progress = Math.round((completedToday / Math.max(todayTasks.length, 1)) * 100);
   const pendingTasks = tasks.filter((task) => !task.completed);
   const focusTask = pendingTasks.find((task) => task.id === focusTaskId) || pendingTasks[0];
-  const streak = calculateStreak(tasks);
+  const upcomingTasks = pendingTasks
+    .filter((task) => task.dueAt && new Date(task.dueAt).getTime() >= now)
+    .sort((a, b) => new Date(a.dueAt!).getTime() - new Date(b.dueAt!).getTime())
+    .slice(0, 3);
 
   async function addTask() {
     const title = draft.trim();
@@ -262,6 +256,8 @@ export default function Home() {
     if (!accessToken) return;
     try {
       await setRemoteTaskCompleted(accessToken, taskId, completed);
+      const user = await loadCurrentUser(accessToken);
+      setStreak(user.streak_count);
     } catch {
       setTasks((current) => current.map((task) => task.id === taskId ? { ...task, completed: previous, completedAt: previousTask?.completedAt ?? null } : task));
       setSyncState('error');
@@ -375,7 +371,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')} className="h-9 rounded-xl px-3 text-xs font-bold text-white/75 transition hover:bg-white/10" aria-label="Change language">{language.toUpperCase()}</button>
-              <Button variant="ghost" size="icon" className="text-white/75 hover:bg-white/10 hover:text-white" onClick={toggleTheme} aria-label="Toggle theme">{dark ? <Sun /> : <Moon />}</Button>
+              <Button variant="ghost" size="icon" className="text-white/75 hover:bg-white/10 hover:text-white" onClick={() => setProfileOpen(true)} aria-label={t.profile}><UserRound /></Button>
               <Button variant="ghost" size="icon" className="relative text-white/75 hover:bg-white/10 hover:text-white" aria-label={t.notifications} onClick={() => setNotificationsOpen(true)}><Bell />{digestEnabled && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#8df3c7] ring-2 ring-[#111d30]" />}</Button>
             </div>
           </header>
@@ -416,10 +412,25 @@ export default function Home() {
             <Button variant={searchOpen ? 'secondary' : 'ghost'} size="icon" aria-label={t.search} onClick={() => setSearchOpen((current) => !current)}><Search /></Button>
           </div>
 
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <button onClick={() => setCategoryFilter('all')} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${categoryFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{language === 'ru' ? 'Все категории' : 'All categories'}</button>
+            {categories.map((category) => <button key={category} onClick={() => setCategoryFilter(category)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${categoryFilter === category ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}><span className={`size-2 rounded-full ${categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}
+          </div>
+
           {searchOpen && (
             <div className="relative mt-3">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${t.search}…`} className="h-11 rounded-xl bg-card pl-9" />
+            </div>
+          )}
+
+          {filter === 'today' && !searchOpen && (
+            <div className="mt-5 rounded-2xl border border-sky-500/15 bg-sky-500/[.055] p-4">
+              <div className="flex items-center gap-2"><Clock3 className="size-4 text-sky-600" /><h2 className="text-sm font-semibold">{t.upcoming}</h2></div>
+              <div className="mt-3 space-y-2">
+                {upcomingTasks.map((task) => <button key={task.id} onClick={() => openEditor(task)} className="flex w-full items-center gap-3 rounded-xl bg-background/80 p-3 text-left transition hover:bg-background"><span className={`size-2.5 shrink-0 rounded-full ${categoryColor(task.category)}`} /><span className="min-w-0 flex-1 truncate text-sm font-medium">{task.title}</span><span className="text-xs text-muted-foreground">{formatTime(task.dueAt, language)}</span><ChevronRight className="size-4 text-muted-foreground" /></button>)}
+                {upcomingTasks.length === 0 && <p className="py-2 text-sm text-muted-foreground">{t.noUpcoming}</p>}
+              </div>
             </div>
           )}
 
@@ -476,6 +487,22 @@ export default function Home() {
               <Button variant="destructive" onClick={() => { if (selectedTask) { setDeleteTarget(selectedTask); setSelectedTask(null); } }}><Trash2 />{t.remove}</Button>
               <Button onClick={() => void saveTask()}><Save />{t.save}</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+          <DialogContent className="rounded-3xl p-5 sm:max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><UserRound className="size-5" />{t.profile}</DialogTitle><DialogDescription>{t.profileHint}</DialogDescription></DialogHeader>
+            <div className="space-y-5 py-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-orange-500/10 p-3 text-center"><Flame className="mx-auto size-5 text-orange-500" /><p className="mt-2 text-xl font-semibold">{streak}</p><p className="text-[11px] text-muted-foreground">{t.streak}</p></div>
+                <div className="rounded-2xl bg-emerald-500/10 p-3 text-center"><CheckCircle2 className="mx-auto size-5 text-emerald-500" /><p className="mt-2 text-xl font-semibold">{tasks.filter((task) => task.completed).length}</p><p className="text-[11px] text-muted-foreground">{t.completed}</p></div>
+                <div className="rounded-2xl bg-sky-500/10 p-3 text-center"><Target className="mx-auto size-5 text-sky-500" /><p className="mt-2 text-xl font-semibold">{pendingTasks.length}</p><p className="text-[11px] text-muted-foreground">{t.left}</p></div>
+              </div>
+              <p className="rounded-xl bg-muted/70 px-3 py-2 text-xs leading-5 text-muted-foreground">{language === 'ru' ? 'Серия начинается с 0. Выполните хотя бы одну задачу за 24 часа, чтобы увеличить её на один день. Максимум — 1000.' : 'Your streak starts at 0. Complete at least one task within 24 hours to add one day. The maximum is 1000.'}</p>
+              <div className="space-y-2"><Label htmlFor="profile-dialog-name">{t.yourName}</Label><div className="flex gap-2"><Input id="profile-dialog-name" value={nameDraft} maxLength={64} onChange={(event) => setNameDraft(event.target.value)} /><Button onClick={() => void saveSettings({ display_name: nameDraft.trim() || (language === 'ru' ? 'Капитан' : 'Captain') })}><Save />{t.save}</Button></div></div>
+            </div>
+            <DialogFooter><Button variant="outline" onClick={() => { setProfileOpen(false); setSettingsOpen(true); }}><Settings2 />{t.settings}</Button><Button onClick={() => setProfileOpen(false)}>{t.close}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
 
