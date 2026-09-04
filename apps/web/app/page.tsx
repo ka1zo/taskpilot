@@ -67,7 +67,7 @@ import {
 } from '@/lib/api';
 
 type Language = 'ru' | 'en';
-type Filter = 'today' | 'all' | 'completed';
+type Filter = 'today' | 'all';
 type TaskCategory = 'inbox' | 'work' | 'personal' | 'study' | 'health';
 type Task = {
   id: number;
@@ -129,6 +129,12 @@ export default function Home() {
   const [profileName, setProfileName] = useState('Капитан');
   const [nameDraft, setNameDraft] = useState('Капитан');
   const [quickCategory, setQuickCategory] = useState<TaskCategory>('inbox');
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [newPriority, setNewPriority] = useState<Task['priority']>('low');
+  const [newCategory, setNewCategory] = useState<TaskCategory>('inbox');
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<'demo' | 'connecting' | 'live' | 'error'>('demo');
   const [dark, setDark] = useState(false);
@@ -154,6 +160,7 @@ export default function Home() {
   const [focusRunning, setFocusRunning] = useState(false);
   const [focusFinished, setFocusFinished] = useState(false);
   const [focusTaskId, setFocusTaskId] = useState<number | null>(null);
+  const [focusOpen, setFocusOpen] = useState(false);
   const [notificationTestState, setNotificationTestState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [streak, setStreak] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -205,21 +212,19 @@ export default function Home() {
   }, [focusRunning]);
 
   const visibleTasks = useMemo(() => {
-    const byFilter = filter === 'completed'
-      ? tasks.filter((task) => task.completed)
-      : filter === 'today'
-        ? tasks.filter((task) => !task.completed && (!task.dueAt || (isToday(task.dueAt) && new Date(task.dueAt).getTime() >= now)))
-        : tasks.filter((task) => !task.completed);
+    const byFilter = filter === 'today'
+      ? tasks.filter((task) => !task.completed && (!task.dueAt || (isToday(task.dueAt) && new Date(task.dueAt).getTime() >= now)))
+      : tasks.filter((task) => !task.completed);
     const normalized = query.trim().toLocaleLowerCase(language === 'ru' ? 'ru-RU' : 'en-US');
     const byCategory = categoryFilter === 'all' ? byFilter : byFilter.filter((task) => task.category === categoryFilter);
     const byPriority = priorityFilter === 'all' ? byCategory : byCategory.filter((task) => task.priority === priorityFilter);
     return normalized ? byPriority.filter((task) => task.title.toLocaleLowerCase().includes(normalized)) : byPriority;
   }, [categoryFilter, filter, language, now, priorityFilter, query, tasks]);
 
-  const todayTasks = tasks.filter((task) => isToday(task.dueAt));
-  const completedToday = todayTasks.filter((task) => task.completed).length;
-  const pendingToday = Math.max(todayTasks.length - completedToday, 0);
-  const progress = Math.round((completedToday / Math.max(todayTasks.length, 1)) * 100);
+  const completedToday = tasks.filter((task) => task.completed && task.completedAt && isToday(task.completedAt)).length;
+  const pendingToday = tasks.filter((task) => !task.completed && (!task.dueAt || isToday(task.dueAt))).length;
+  const plannedToday = completedToday + pendingToday;
+  const progress = plannedToday === 0 ? 0 : Math.round((completedToday / plannedToday) * 100);
   const pendingTasks = tasks.filter((task) => !task.completed);
   const focusTask = pendingTasks.find((task) => task.id === focusTaskId) || pendingTasks[0];
   const upcomingTasks = pendingTasks
@@ -237,6 +242,39 @@ export default function Home() {
     if (!accessToken) return;
     try {
       const saved = await createRemoteTask(accessToken, title, 'low', quickCategory);
+      setTasks((current) => current.map((task) => task.id === optimisticId ? fromApiTask(saved) : task));
+    } catch {
+      setTasks((current) => current.filter((task) => task.id !== optimisticId));
+      setSyncState('error');
+    }
+  }
+
+  async function createDetailedTask() {
+    const title = newTitle.trim();
+    if (!title) return;
+    const dueAt = newDate
+      ? new Date(`${newDate}T${newTime || '09:00'}:00`).toISOString()
+      : null;
+    const optimisticId = Date.now();
+    const optimistic: Task = {
+      id: optimisticId,
+      title,
+      dueAt,
+      priority: newPriority,
+      category: newCategory,
+      completed: false,
+      completedAt: null,
+    };
+    setTasks((current) => [optimistic, ...current]);
+    setCreateTaskOpen(false);
+    setNewTitle('');
+    setNewDate('');
+    setNewTime('');
+    setNewPriority('low');
+    setNewCategory('inbox');
+    if (!accessToken) return;
+    try {
+      const saved = await createRemoteTask(accessToken, title, newPriority, newCategory, dueAt);
       setTasks((current) => current.map((task) => task.id === optimisticId ? fromApiTask(saved) : task));
     } catch {
       setTasks((current) => current.filter((task) => task.id !== optimisticId));
@@ -349,22 +387,9 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', next);
   }
 
-  function focusNewTask() {
-    const input = document.getElementById('new-task-input');
-    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    window.setTimeout(() => {
-      if (input instanceof HTMLInputElement) input.focus();
-    }, 350);
-  }
-
-  function openFocusSession() {
-    document.getElementById('focus-session')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
   const filters: Array<{ id: Filter; label: string }> = [
     { id: 'today', label: t.today },
     { id: 'all', label: t.all },
-    { id: 'completed', label: t.completed },
   ];
 
   return (
@@ -456,26 +481,57 @@ export default function Home() {
             )}
           </div>
 
-          {focusTask && (
-            <div id="focus-session" className="mt-6 scroll-mt-6 overflow-hidden rounded-[1.5rem] border border-violet-500/15 bg-[linear-gradient(135deg,rgba(124,58,237,.11),rgba(59,130,246,.06))] p-5">
-              <div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300"><Sparkles className="size-3.5" />{t.focus}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t.focusHint}</p></div><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-600/20"><TimerReset className="size-5" /></span></div>
-              <Select value={String(focusTask.id)} onValueChange={(value) => { setFocusTaskId(Number(value)); resetFocus(); }}><SelectTrigger className="mt-4 h-10 w-full rounded-xl bg-background/70"><SelectValue /></SelectTrigger><SelectContent>{pendingTasks.map((task) => <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>)}</SelectContent></Select>
-              {focusFinished && <p className="mt-3 text-center text-sm font-medium text-emerald-600">{t.focusDone}</p>}
-              <div className="mt-3 grid grid-cols-[1fr_auto] gap-2"><Button onClick={() => { if (focusSeconds === 0) resetFocus(); setFocusRunning((current) => !current); }} className="rounded-xl bg-violet-600 text-white hover:bg-violet-500"><TimerReset />{focusRunning ? t.pause : t.start} · {String(Math.floor(focusSeconds / 60)).padStart(2, '0')}:{String(focusSeconds % 60).padStart(2, '0')}</Button><Button variant="outline" size="icon" onClick={resetFocus} className="rounded-xl" aria-label={t.reset}><RotateCcw /></Button></div>
-              {focusFinished && <Button variant="outline" onClick={() => void toggleTask(focusTask.id, true)} className="mt-2 w-full rounded-xl"><CheckCircle2 />{t.finishTask}</Button>}
-            </div>
-          )}
-
           <div className={`mx-auto mt-6 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs ${syncState === 'error' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}><span className={`size-1.5 rounded-full ${syncState === 'connecting' ? 'animate-pulse bg-amber-400' : syncState === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />{syncState === 'live' ? t.synced : syncState === 'demo' ? t.demo : syncState === 'connecting' ? t.connecting : t.error}</div>
         </section>
 
         <nav className="fixed inset-x-4 bottom-4 z-30 mx-auto flex h-16 max-w-[420px] items-center justify-around rounded-[1.35rem] border border-border/80 bg-background/94 px-3 shadow-[0_18px_50px_-18px_rgba(15,23,42,.45)] backdrop-blur-xl" aria-label="Quick actions">
           {[
-            { icon: Plus, label: t.add, action: focusNewTask },
-            { icon: TimerReset, label: t.focus, action: openFocusSession },
+            { icon: Plus, label: t.add, action: () => setCreateTaskOpen(true) },
+            { icon: TimerReset, label: t.focus, action: () => setFocusOpen(true) },
             { icon: Settings2, label: t.settings, action: () => setSettingsOpen(true) },
           ].map(({ icon: NavIcon, label, action }) => <button key={label} onClick={action} className="flex min-w-24 items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"><NavIcon className="size-4.5" />{label}</button>)}
         </nav>
+
+        <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
+          <DialogContent className="rounded-3xl p-5 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></span>{t.add}</DialogTitle>
+              <DialogDescription>{language === 'ru' ? 'Добавьте детали сейчас — потом их всегда можно изменить.' : 'Add the details now — you can edit them anytime.'}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2"><Label htmlFor="new-task-title">{t.taskName}</Label><Input id="new-task-title" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && newTitle.trim() && void createDetailedTask()} placeholder={t.placeholder} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label htmlFor="new-task-date">{t.dueDate}</Label><Input id="new-task-date" type="date" value={newDate} onChange={(event) => setNewDate(event.target.value)} /></div>
+                <div className="space-y-2"><Label htmlFor="new-task-time">{t.dueTime}</Label><Input id="new-task-time" type="time" value={newTime} onChange={(event) => setNewTime(event.target.value)} disabled={!newDate} /></div>
+              </div>
+              <div className="space-y-2"><Label>{t.category}</Label><div className="grid grid-cols-2 gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => setNewCategory(category)} className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${newCategory === category ? `${categoryColor(category)} border-transparent text-white shadow-sm` : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}><span className={`size-2.5 rounded-full ${newCategory === category ? 'bg-white/80' : categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}</div></div>
+              <div className="space-y-2"><Label>{t.priority}</Label><Select value={newPriority} onValueChange={(value) => setNewPriority(value as Task['priority'])}><SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">{t.low}</SelectItem><SelectItem value="medium">{t.medium}</SelectItem><SelectItem value="high">{t.high}</SelectItem></SelectContent></Select></div>
+            </div>
+            <DialogFooter className="-mx-5 -mb-5 px-5"><Button variant="outline" onClick={() => setCreateTaskOpen(false)}>{t.cancel}</Button><Button onClick={() => void createDetailedTask()} disabled={!newTitle.trim()}><Plus />{t.create}</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={focusOpen} onOpenChange={(open) => { setFocusOpen(open); if (!open) setFocusRunning(false); }}>
+          <DialogContent className="overflow-hidden rounded-3xl border-violet-500/20 p-0 sm:max-w-md">
+            <div className="bg-[linear-gradient(135deg,rgba(124,58,237,.14),rgba(59,130,246,.07))] p-5">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-300"><span className="grid size-10 place-items-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-600/20"><TimerReset className="size-5" /></span>{t.focus}</DialogTitle>
+                <DialogDescription>{t.focusHint}</DialogDescription>
+              </DialogHeader>
+              {focusTask ? (
+                <div className="mt-5">
+                  <Select value={String(focusTask.id)} onValueChange={(value) => { setFocusTaskId(Number(value)); resetFocus(); }}><SelectTrigger className="h-11 w-full rounded-xl bg-background/80"><SelectValue /></SelectTrigger><SelectContent>{pendingTasks.map((task) => <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>)}</SelectContent></Select>
+                  <div className="my-6 text-center"><p className="text-5xl font-semibold tracking-[-0.06em] tabular-nums">{String(Math.floor(focusSeconds / 60)).padStart(2, '0')}:{String(focusSeconds % 60).padStart(2, '0')}</p><p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">{focusRunning ? (language === 'ru' ? 'Сосредоточьтесь на задаче' : 'Stay with the task') : (language === 'ru' ? '25 минут без отвлечений' : '25 distraction-free minutes')}</p></div>
+                  {focusFinished && <p className="mb-3 text-center text-sm font-medium text-emerald-600">{t.focusDone}</p>}
+                  <div className="grid grid-cols-[1fr_auto] gap-2"><Button onClick={() => { if (focusSeconds === 0) resetFocus(); setFocusRunning((current) => !current); }} className="h-11 rounded-xl bg-violet-600 text-white hover:bg-violet-500"><TimerReset />{focusRunning ? t.pause : t.start}</Button><Button variant="outline" size="icon" onClick={resetFocus} className="size-11 rounded-xl" aria-label={t.reset}><RotateCcw /></Button></div>
+                  {focusFinished && <Button variant="outline" onClick={() => { void toggleTask(focusTask.id, true); setFocusOpen(false); }} className="mt-2 w-full rounded-xl"><CheckCircle2 />{t.finishTask}</Button>}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-dashed border-violet-500/25 bg-background/60 p-6 text-center"><Sparkles className="mx-auto size-7 text-violet-500" /><p className="mt-3 font-semibold">{language === 'ru' ? 'Сначала добавьте задачу' : 'Add a task first'}</p><p className="mt-1 text-sm text-muted-foreground">{language === 'ru' ? 'Фокус-сессии работают с одной выбранной задачей.' : 'Focus sessions work with one selected task.'}</p><Button onClick={() => { setFocusOpen(false); setCreateTaskOpen(true); }} className="mt-4 rounded-xl"><Plus />{t.add}</Button></div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={selectedTask !== null} onOpenChange={(open) => !open && setSelectedTask(null)}>
           <DialogContent className="rounded-3xl p-5 sm:max-w-md">

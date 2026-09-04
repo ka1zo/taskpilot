@@ -88,11 +88,12 @@ export function createRemoteTask(
   title: string,
   priority: ApiTask['priority'],
   category: ApiTask['category'],
+  dueAt: string | null = null,
 ): Promise<ApiTask> {
   return request('/tasks', {
     method: 'POST',
     headers: authorization(token),
-    body: JSON.stringify({ title, priority, category }),
+    body: JSON.stringify({ title, priority, category, due_at: dueAt }),
   });
 }
 
