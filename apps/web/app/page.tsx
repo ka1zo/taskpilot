@@ -3,14 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
-  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
-  Inbox,
   Flame,
-  ListFilter,
   Plus,
   Search,
   Save,
@@ -132,7 +129,6 @@ export default function Home() {
   const [profileName, setProfileName] = useState('Капитан');
   const [nameDraft, setNameDraft] = useState('Капитан');
   const [quickCategory, setQuickCategory] = useState<TaskCategory>('inbox');
-  const [quickPriority, setQuickPriority] = useState<Task['priority']>('low');
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<'demo' | 'connecting' | 'live' | 'error'>('demo');
   const [dark, setDark] = useState(false);
@@ -235,12 +231,12 @@ export default function Home() {
     const title = draft.trim();
     if (!title) return;
     const optimisticId = Date.now();
-    const optimistic: Task = { id: optimisticId, title, dueAt: null, priority: quickPriority, category: quickCategory, completed: false, completedAt: null };
+    const optimistic: Task = { id: optimisticId, title, dueAt: null, priority: 'low', category: quickCategory, completed: false, completedAt: null };
     setTasks((current) => [optimistic, ...current]);
     setDraft('');
     if (!accessToken) return;
     try {
-      const saved = await createRemoteTask(accessToken, title, quickPriority, quickCategory);
+      const saved = await createRemoteTask(accessToken, title, 'low', quickCategory);
       setTasks((current) => current.map((task) => task.id === optimisticId ? fromApiTask(saved) : task));
     } catch {
       setTasks((current) => current.filter((task) => task.id !== optimisticId));
@@ -353,6 +349,18 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', next);
   }
 
+  function focusNewTask() {
+    const input = document.getElementById('new-task-input');
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      if (input instanceof HTMLInputElement) input.focus();
+    }, 350);
+  }
+
+  function openFocusSession() {
+    document.getElementById('focus-session')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   const filters: Array<{ id: Filter; label: string }> = [
     { id: 'today', label: t.today },
     { id: 'all', label: t.all },
@@ -396,12 +404,11 @@ export default function Home() {
           <div className="rounded-2xl border border-border bg-card p-2 shadow-[0_18px_50px_-32px_rgba(15,23,42,.45)]">
             <div className="flex items-center gap-2">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></span>
-              <Input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void addTask()} placeholder={t.placeholder} className="h-10 min-w-0 border-0 bg-transparent px-1 text-[15px] shadow-none focus-visible:ring-0" />
+              <Input id="new-task-input" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void addTask()} placeholder={t.placeholder} className="h-10 min-w-0 border-0 bg-transparent px-1 text-[15px] shadow-none focus-visible:ring-0" />
               <Button onClick={() => void addTask()} className="h-10 rounded-xl px-4 shadow-sm">{t.create}</Button>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/60 px-1 pt-2">
-              <Select value={quickCategory} onValueChange={(value) => setQuickCategory(value as TaskCategory)}><SelectTrigger className="h-8 w-[135px] rounded-lg border-0 bg-muted text-xs"><span className={`size-2 rounded-full ${categoryColor(quickCategory)}`} /><SelectValue /></SelectTrigger><SelectContent>{categories.map((category) => <SelectItem key={category} value={category}>{categoryLabel(category, language)}</SelectItem>)}</SelectContent></Select>
-              <div className="flex items-center gap-1 rounded-lg bg-muted p-1" aria-label={t.priority}>{(['low', 'medium', 'high'] as const).map((priority) => <button key={priority} onClick={() => setQuickPriority(priority)} className={`grid size-6 place-items-center rounded-md transition ${quickPriority === priority ? 'bg-card shadow-sm' : ''}`} aria-label={t[priority]}><span className={`size-2.5 rounded-full ${priority === 'high' ? 'bg-rose-500' : priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} /></button>)}</div>
+            <div className="mt-2 flex gap-2 overflow-x-auto border-t border-border/60 px-1 pt-2">
+              {categories.map((category) => <button key={category} onClick={() => setQuickCategory(category)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${quickCategory === category ? `${categoryColor(category)} text-white shadow-sm` : 'bg-muted text-muted-foreground hover:text-foreground'}`}><span className={`size-2 rounded-full ${quickCategory === category ? 'bg-white/80' : categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}
             </div>
           </div>
 
@@ -409,12 +416,12 @@ export default function Home() {
             <div className="flex rounded-xl bg-muted p-1">
               {filters.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition ${filter === item.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>{item.label}</button>)}
             </div>
-            <Button variant={searchOpen ? 'secondary' : 'ghost'} size="icon" aria-label={t.search} onClick={() => setSearchOpen((current) => !current)}><Search /></Button>
+            <div className="flex gap-1"><Button variant={filtersOpen ? 'secondary' : 'ghost'} size="icon" aria-label={t.filters} onClick={() => setFiltersOpen(true)} className="relative"><SlidersHorizontal />{(categoryFilter !== 'all' || priorityFilter !== 'all') && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />}</Button><Button variant={searchOpen ? 'secondary' : 'ghost'} size="icon" aria-label={t.search} onClick={() => setSearchOpen((current) => !current)}><Search /></Button></div>
           </div>
 
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             <button onClick={() => setCategoryFilter('all')} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${categoryFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{language === 'ru' ? 'Все категории' : 'All categories'}</button>
-            {categories.map((category) => <button key={category} onClick={() => setCategoryFilter(category)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${categoryFilter === category ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}><span className={`size-2 rounded-full ${categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}
+            {categories.map((category) => <button key={category} onClick={() => setCategoryFilter(category)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${categoryFilter === category ? `${categoryColor(category)} text-white shadow-sm` : 'bg-muted text-muted-foreground'}`}><span className={`size-2 rounded-full ${categoryFilter === category ? 'bg-white/80' : categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}
           </div>
 
           {searchOpen && (
@@ -439,7 +446,7 @@ export default function Home() {
               <article key={task.id} className="group flex items-center gap-3 overflow-hidden rounded-2xl border border-border/75 bg-card p-3.5 shadow-[0_10px_35px_-30px_rgba(15,23,42,.55)] transition hover:-translate-y-0.5 hover:border-primary/25">
                 <span className={`-ml-3.5 h-11 w-1 shrink-0 rounded-r-full ${categoryColor(task.category)}`} />
                 <Checkbox checked={task.completed} onCheckedChange={(checked) => void toggleTask(task.id, Boolean(checked))} aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${task.title}`} className="size-5 rounded-full" />
-                <div className="min-w-0 flex-1"><p className={`truncate text-[15px] font-medium ${task.completed ? 'text-muted-foreground line-through' : ''}`}>{task.title}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3" />{formatTime(task.dueAt, language)}<span>·</span><span>{categoryLabel(task.category, language)}</span><span className={`ml-1 size-1.5 rounded-full ${task.priority === 'high' ? 'bg-rose-500' : task.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} /></p></div>
+                <div className="min-w-0 flex-1"><p className={`truncate text-[15px] font-medium ${task.completed ? 'text-muted-foreground line-through' : ''}`}>{task.title}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3" />{formatTime(task.dueAt, language)}<span>·</span><span>{categoryLabel(task.category, language)}</span>{task.priority !== 'low' && <><span>·</span><span>{task.priority === 'high' ? t.high : t.medium}</span></>}</p></div>
                 <button onClick={() => setDeleteTarget(task)} className="grid size-9 place-items-center rounded-xl text-muted-foreground/50 hover:bg-rose-500/10 hover:text-rose-600" aria-label={t.remove}><Trash2 className="size-4" /></button>
                 <button onClick={() => openEditor(task)} className="grid size-9 place-items-center rounded-xl text-muted-foreground/60 hover:bg-muted hover:text-foreground" aria-label={t.edit}><ChevronRight className="size-4" /></button>
               </article>
@@ -450,7 +457,7 @@ export default function Home() {
           </div>
 
           {focusTask && (
-            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-violet-500/15 bg-[linear-gradient(135deg,rgba(124,58,237,.11),rgba(59,130,246,.06))] p-5">
+            <div id="focus-session" className="mt-6 scroll-mt-6 overflow-hidden rounded-[1.5rem] border border-violet-500/15 bg-[linear-gradient(135deg,rgba(124,58,237,.11),rgba(59,130,246,.06))] p-5">
               <div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300"><Sparkles className="size-3.5" />{t.focus}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t.focusHint}</p></div><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-600/20"><TimerReset className="size-5" /></span></div>
               <Select value={String(focusTask.id)} onValueChange={(value) => { setFocusTaskId(Number(value)); resetFocus(); }}><SelectTrigger className="mt-4 h-10 w-full rounded-xl bg-background/70"><SelectValue /></SelectTrigger><SelectContent>{pendingTasks.map((task) => <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>)}</SelectContent></Select>
               {focusFinished && <p className="mt-3 text-center text-sm font-medium text-emerald-600">{t.focusDone}</p>}
@@ -462,13 +469,12 @@ export default function Home() {
           <div className={`mx-auto mt-6 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs ${syncState === 'error' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}><span className={`size-1.5 rounded-full ${syncState === 'connecting' ? 'animate-pulse bg-amber-400' : syncState === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />{syncState === 'live' ? t.synced : syncState === 'demo' ? t.demo : syncState === 'connecting' ? t.connecting : t.error}</div>
         </section>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto flex h-[78px] max-w-[760px] items-start justify-around border-t border-border/80 bg-background/92 px-3 pt-2.5 backdrop-blur-xl" aria-label="Primary navigation">
+        <nav className="fixed inset-x-4 bottom-4 z-30 mx-auto flex h-16 max-w-[420px] items-center justify-around rounded-[1.35rem] border border-border/80 bg-background/94 px-3 shadow-[0_18px_50px_-18px_rgba(15,23,42,.45)] backdrop-blur-xl" aria-label="Quick actions">
           {[
-            { icon: CalendarDays, label: t.tasks, active: !searchOpen && !settingsOpen, action: () => { setFilter('today'); setSearchOpen(false); } },
-            { icon: Inbox, label: t.inbox, active: filter === 'all' && !searchOpen, action: () => { setFilter('all'); setSearchOpen(false); } },
-            { icon: ListFilter, label: t.filters, active: filtersOpen || categoryFilter !== 'all' || priorityFilter !== 'all', action: () => setFiltersOpen(true) },
-            { icon: Settings2, label: t.settings, active: settingsOpen, action: () => setSettingsOpen(true) },
-          ].map(({ icon: NavIcon, label, active, action }) => <button key={label} onClick={action} className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium transition ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}><NavIcon className="size-5" />{label}</button>)}
+            { icon: Plus, label: t.add, action: focusNewTask },
+            { icon: TimerReset, label: t.focus, action: openFocusSession },
+            { icon: Settings2, label: t.settings, action: () => setSettingsOpen(true) },
+          ].map(({ icon: NavIcon, label, action }) => <button key={label} onClick={action} className="flex min-w-24 items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"><NavIcon className="size-4.5" />{label}</button>)}
         </nav>
 
         <Dialog open={selectedTask !== null} onOpenChange={(open) => !open && setSelectedTask(null)}>
@@ -480,8 +486,8 @@ export default function Home() {
                 <div className="space-y-2"><Label htmlFor="task-date">{t.dueDate}</Label><Input id="task-date" type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} /></div>
                 <div className="space-y-2"><Label htmlFor="task-time">{t.dueTime}</Label><Input id="task-time" type="time" value={editTime} onChange={(event) => setEditTime(event.target.value)} disabled={!editDate} /></div>
               </div>
-              <div className="space-y-2"><Label>{t.category}</Label><Select value={editCategory} onValueChange={(value) => setEditCategory(value as TaskCategory)}><SelectTrigger className="h-10 w-full"><span className={`size-2 rounded-full ${categoryColor(editCategory)}`} /><SelectValue /></SelectTrigger><SelectContent>{categories.map((category) => <SelectItem key={category} value={category}>{categoryLabel(category, language)}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label>{t.priority}</Label><Select value={editPriority} onValueChange={(value) => setEditPriority(value as Task['priority'])}><SelectTrigger className="h-10 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">🟢 {t.low}</SelectItem><SelectItem value="medium">🟡 {t.medium}</SelectItem><SelectItem value="high">🔴 {t.high}</SelectItem></SelectContent></Select></div>
+              <div className="space-y-2"><Label>{t.category}</Label><div className="grid grid-cols-2 gap-2">{categories.map((category) => <button key={category} onClick={() => setEditCategory(category)} className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${editCategory === category ? `${categoryColor(category)} border-transparent text-white shadow-sm` : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}><span className={`size-2.5 rounded-full ${editCategory === category ? 'bg-white/80' : categoryColor(category)}`} />{categoryLabel(category, language)}</button>)}</div></div>
+              <div className="space-y-2"><Label>{t.priority}</Label><Select value={editPriority} onValueChange={(value) => setEditPriority(value as Task['priority'])}><SelectTrigger className="h-10 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">{t.low}</SelectItem><SelectItem value="medium">{t.medium}</SelectItem><SelectItem value="high">{t.high}</SelectItem></SelectContent></Select></div>
             </div>
             <DialogFooter className="-mx-5 -mb-5 px-5">
               <Button variant="destructive" onClick={() => { if (selectedTask) { setDeleteTarget(selectedTask); setSelectedTask(null); } }}><Trash2 />{t.remove}</Button>
@@ -526,7 +532,7 @@ export default function Home() {
             <DialogHeader><DialogTitle>{t.filters}</DialogTitle><DialogDescription>{language === 'ru' ? 'Показывайте только нужные задачи.' : 'Show only the tasks you need.'}</DialogDescription></DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2"><Label>{t.category}</Label><Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value as TaskCategory | 'all')}><SelectTrigger className="h-11 w-full"><SlidersHorizontal className="size-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{language === 'ru' ? 'Все категории' : 'All categories'}</SelectItem>{categories.map((category) => <SelectItem key={category} value={category}>{categoryLabel(category, language)}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label>{t.priority}</Label><Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as Task['priority'] | 'all')}><SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{language === 'ru' ? 'Любой приоритет' : 'Any priority'}</SelectItem><SelectItem value="low">🟢 {t.low}</SelectItem><SelectItem value="medium">🟡 {t.medium}</SelectItem><SelectItem value="high">🔴 {t.high}</SelectItem></SelectContent></Select></div>
+              <div className="space-y-2"><Label>{t.priority}</Label><Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as Task['priority'] | 'all')}><SelectTrigger className="h-11 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{language === 'ru' ? 'Любой приоритет' : 'Any priority'}</SelectItem><SelectItem value="low">{t.low}</SelectItem><SelectItem value="medium">{t.medium}</SelectItem><SelectItem value="high">{t.high}</SelectItem></SelectContent></Select></div>
             </div>
             <DialogFooter><Button variant="outline" onClick={() => { setCategoryFilter('all'); setPriorityFilter('all'); }}>{t.resetFilters}</Button><Button onClick={() => setFiltersOpen(false)}>{t.close}</Button></DialogFooter>
           </DialogContent>
