@@ -79,12 +79,6 @@ type Task = {
   completedAt: string | null;
 };
 
-const demoTasks: Task[] = [
-  { id: 1, title: 'Подготовить портфолио проекта', dueAt: new Date(new Date().setHours(12, 30, 0, 0)).toISOString(), priority: 'high', category: 'work', completed: false, completedAt: null },
-  { id: 2, title: '30 минут английского', dueAt: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(), priority: 'medium', category: 'study', completed: false, completedAt: null },
-  { id: 3, title: 'Спланировать следующую неделю', dueAt: null, priority: 'low', category: 'personal', completed: true, completedAt: new Date().toISOString() },
-];
-
 const copy = {
   ru: {
     hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', demo: 'Предпросмотр', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', upcoming: 'Ближайшие задачи', noUpcoming: 'Нет задач с будущим временем', focus: 'Фокус-сессия', focusHint: 'Выберите одну задачу: таймер даст 25 минут непрерывной работы, затем её можно сразу завершить или выбрать следующую.', start: 'Начать фокус', pause: 'Пауза', reset: 'Сбросить', finishTask: 'Отметить выполненной', focusDone: 'Сессия завершена — отличная работа!', tasks: 'Обзор', inbox: 'Все задачи', settings: 'Настройки', search: 'Поиск', filters: 'Фильтры', resetFilters: 'Сбросить фильтры', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', category: 'Цвет и категория', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', removeTitle: 'Удалить задачу?', removeHint: 'Задача будет удалена из активного списка.', cancel: 'Отмена', profile: 'Профиль', profileHint: 'Имя, серия и ваша статистика TaskPilot.', preferences: 'Персональные настройки', yourName: 'Имя для приветствия', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть', notifications: 'Уведомления', notificationsHint: 'Здесь настраиваются утренняя сводка и напоминания о задачах. Все сообщения приходят в чат с ботом в Telegram.', testNotification: 'Отправить тест', testSent: 'Тест отправлен в Telegram', streak: 'дней серии',
@@ -124,7 +118,7 @@ function formatTime(value: string | null, language: Language): string {
 export default function Home() {
   const [language, setLanguage] = useState<Language>('ru');
   const [filter, setFilter] = useState<Filter>('today');
-  const [tasks, setTasks] = useState<Task[]>(demoTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState('');
   const [profileName, setProfileName] = useState('Капитан');
   const [nameDraft, setNameDraft] = useState('Капитан');
