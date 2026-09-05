@@ -79,12 +79,73 @@ type Task = {
   completedAt: string | null;
 };
 
+type LocalSnapshot = {
+  tasks: Task[];
+  language: Language;
+  profileName: string;
+  timezoneOffset: number;
+  digestHour: number;
+  digestEnabled: boolean;
+  streak: number;
+  dark: boolean;
+  focusSeconds: number;
+  focusTaskId: number | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isStoredTask(value: unknown): value is Task {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'number'
+    && typeof value.title === 'string'
+    && (value.dueAt === null || typeof value.dueAt === 'string')
+    && (value.priority === 'low' || value.priority === 'medium' || value.priority === 'high')
+    && (value.category === 'inbox' || value.category === 'work' || value.category === 'personal' || value.category === 'study' || value.category === 'health')
+    && typeof value.completed === 'boolean'
+    && (value.completedAt === null || typeof value.completedAt === 'string');
+}
+
+function cacheKeyFor(initData: string | null): string {
+  if (!initData) return 'taskpilot:browser:v1';
+  try {
+    const rawUser = new URLSearchParams(initData).get('user');
+    const user: unknown = rawUser ? JSON.parse(rawUser) : null;
+    if (isRecord(user) && typeof user.id === 'number') return `taskpilot:telegram:${user.id}:v1`;
+  } catch {
+    // Fall back to a device-only cache when Telegram data cannot be decoded.
+  }
+  return 'taskpilot:telegram:v1';
+}
+
+function readSnapshot(key: string): LocalSnapshot | null {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(key) || 'null');
+    if (!isRecord(parsed) || !Array.isArray(parsed.tasks)) return null;
+    return {
+      tasks: parsed.tasks.filter(isStoredTask),
+      language: parsed.language === 'en' ? 'en' : 'ru',
+      profileName: typeof parsed.profileName === 'string' ? parsed.profileName : 'Капитан',
+      timezoneOffset: typeof parsed.timezoneOffset === 'number' ? parsed.timezoneOffset : 180,
+      digestHour: typeof parsed.digestHour === 'number' ? parsed.digestHour : 9,
+      digestEnabled: typeof parsed.digestEnabled === 'boolean' ? parsed.digestEnabled : true,
+      streak: typeof parsed.streak === 'number' ? parsed.streak : 0,
+      dark: parsed.dark === true,
+      focusSeconds: typeof parsed.focusSeconds === 'number' ? Math.min(Math.max(parsed.focusSeconds, 0), 25 * 60) : 25 * 60,
+      focusTaskId: typeof parsed.focusTaskId === 'number' ? parsed.focusTaskId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const copy = {
   ru: {
-    hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', demo: 'Предпросмотр', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', upcoming: 'Ближайшие задачи', noUpcoming: 'Нет задач с будущим временем', focus: 'Фокус-сессия', focusHint: 'Выберите одну задачу: таймер даст 25 минут непрерывной работы, затем её можно сразу завершить или выбрать следующую.', start: 'Начать фокус', pause: 'Пауза', reset: 'Сбросить', finishTask: 'Отметить выполненной', focusDone: 'Сессия завершена — отличная работа!', tasks: 'Обзор', inbox: 'Все задачи', settings: 'Настройки', search: 'Поиск', filters: 'Фильтры', resetFilters: 'Сбросить фильтры', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', category: 'Цвет и категория', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', removeTitle: 'Удалить задачу?', removeHint: 'Задача будет удалена из активного списка.', cancel: 'Отмена', profile: 'Профиль', profileHint: 'Имя, серия и ваша статистика TaskPilot.', preferences: 'Персональные настройки', yourName: 'Имя для приветствия', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть', notifications: 'Уведомления', notificationsHint: 'Здесь настраиваются утренняя сводка и напоминания о задачах. Все сообщения приходят в чат с ботом в Telegram.', testNotification: 'Отправить тест', testSent: 'Тест отправлен в Telegram', streak: 'дней серии',
+    hello: 'Добрый день', lead: 'Держим курс на главное.', today: 'Сегодня', all: 'Все', completed: 'Готово', plan: 'План дня', left: 'осталось', done: 'выполнено', add: 'Новая задача', placeholder: 'Например, позвонить Анне в 18:00', create: 'Добавить', empty: 'Здесь всё чисто', emptyHint: 'Добавьте задачу или напишите боту в Telegram.', synced: 'Telegram подключён', local: 'Сохранено на устройстве', connecting: 'Подключаю Telegram…', error: 'Не удалось синхронизировать', noTime: 'Без времени', upcoming: 'Ближайшие задачи', noUpcoming: 'Нет задач с будущим временем', focus: 'Фокус-сессия', focusHint: 'Выберите одну задачу: таймер даст 25 минут непрерывной работы, затем её можно сразу завершить или выбрать следующую.', start: 'Начать фокус', pause: 'Пауза', reset: 'Сбросить', finishTask: 'Отметить выполненной', focusDone: 'Сессия завершена — отличная работа!', tasks: 'Обзор', inbox: 'Все задачи', settings: 'Настройки', search: 'Поиск', filters: 'Фильтры', resetFilters: 'Сбросить фильтры', edit: 'Редактировать задачу', taskName: 'Название', dueDate: 'Дата', dueTime: 'Время', priority: 'Приоритет', category: 'Цвет и категория', low: 'Низкий', medium: 'Средний', high: 'Высокий', save: 'Сохранить', remove: 'Удалить', removeTitle: 'Удалить задачу?', removeHint: 'Задача будет удалена из активного списка.', cancel: 'Отмена', profile: 'Профиль', profileHint: 'Имя, серия и ваша статистика TaskPilot.', preferences: 'Персональные настройки', yourName: 'Имя для приветствия', digest: 'Утренняя сводка', digestTime: 'Время сводки', timezone: 'Часовой пояс', close: 'Закрыть', notifications: 'Уведомления', notificationsHint: 'Здесь настраиваются утренняя сводка и напоминания о задачах. Все сообщения приходят в чат с ботом в Telegram.', testNotification: 'Отправить тест', testSent: 'Тест отправлен в Telegram', streak: 'дней серии', recentCompleted: 'Недавно выполнено', restore: 'Вернуть',
   },
   en: {
-    hello: 'Good afternoon', lead: 'Stay on course for what matters.', today: 'Today', all: 'All', completed: 'Done', plan: 'Daily plan', left: 'remaining', done: 'completed', add: 'New task', placeholder: 'For example, call Anna at 18:00', create: 'Add', empty: 'All clear here', emptyHint: 'Add a task or message the Telegram bot.', synced: 'Telegram connected', demo: 'Preview mode', connecting: 'Connecting Telegram…', error: 'Could not sync', noTime: 'No time', upcoming: 'Upcoming tasks', noUpcoming: 'No tasks with a future time', focus: 'Focus session', focusHint: 'Choose one task: the timer gives you 25 uninterrupted minutes, then you can complete it or pick the next one.', start: 'Start focus', pause: 'Pause', reset: 'Reset', finishTask: 'Mark task complete', focusDone: 'Session complete — great work!', tasks: 'Overview', inbox: 'All tasks', settings: 'Settings', search: 'Search', filters: 'Filters', resetFilters: 'Reset filters', edit: 'Edit task', taskName: 'Title', dueDate: 'Date', dueTime: 'Time', priority: 'Priority', category: 'Color and category', low: 'Low', medium: 'Medium', high: 'High', save: 'Save', remove: 'Delete', removeTitle: 'Delete this task?', removeHint: 'The task will be removed from your active list.', cancel: 'Cancel', profile: 'Profile', profileHint: 'Your name, streak and TaskPilot stats.', preferences: 'Personal settings', yourName: 'Greeting name', digest: 'Morning digest', digestTime: 'Digest time', timezone: 'Time zone', close: 'Close', notifications: 'Notifications', notificationsHint: 'Configure task reminders and the morning digest here. Messages are delivered to your Telegram chat with the bot.', testNotification: 'Send a test', testSent: 'Test sent to Telegram', streak: 'day streak',
+    hello: 'Good afternoon', lead: 'Stay on course for what matters.', today: 'Today', all: 'All', completed: 'Done', plan: 'Daily plan', left: 'remaining', done: 'completed', add: 'New task', placeholder: 'For example, call Anna at 18:00', create: 'Add', empty: 'All clear here', emptyHint: 'Add a task or message the Telegram bot.', synced: 'Telegram connected', local: 'Saved on this device', connecting: 'Connecting Telegram…', error: 'Could not sync', noTime: 'No time', upcoming: 'Upcoming tasks', noUpcoming: 'No tasks with a future time', focus: 'Focus session', focusHint: 'Choose one task: the timer gives you 25 uninterrupted minutes, then you can complete it or pick the next one.', start: 'Start focus', pause: 'Pause', reset: 'Reset', finishTask: 'Mark task complete', focusDone: 'Session complete — great work!', tasks: 'Overview', inbox: 'All tasks', settings: 'Settings', search: 'Search', filters: 'Filters', resetFilters: 'Reset filters', edit: 'Edit task', taskName: 'Title', dueDate: 'Date', dueTime: 'Time', priority: 'Priority', category: 'Color and category', low: 'Low', medium: 'Medium', high: 'High', save: 'Save', remove: 'Delete', removeTitle: 'Delete this task?', removeHint: 'The task will be removed from your active list.', cancel: 'Cancel', profile: 'Profile', profileHint: 'Your name, streak and TaskPilot stats.', preferences: 'Personal settings', yourName: 'Greeting name', digest: 'Morning digest', digestTime: 'Digest time', timezone: 'Time zone', close: 'Close', notifications: 'Notifications', notificationsHint: 'Configure task reminders and the morning digest here. Messages are delivered to your Telegram chat with the bot.', testNotification: 'Send a test', testSent: 'Test sent to Telegram', streak: 'day streak', recentCompleted: 'Recently completed', restore: 'Restore',
   },
 };
 
@@ -130,7 +191,9 @@ export default function Home() {
   const [newPriority, setNewPriority] = useState<Task['priority']>('low');
   const [newCategory, setNewCategory] = useState<TaskCategory>('inbox');
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [syncState, setSyncState] = useState<'demo' | 'connecting' | 'live' | 'error'>('demo');
+  const [syncState, setSyncState] = useState<'local' | 'connecting' | 'live' | 'error'>('connecting');
+  const [storageKey, setStorageKey] = useState<string | null>(null);
+  const [cacheReady, setCacheReady] = useState(false);
   const [dark, setDark] = useState(false);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -161,29 +224,82 @@ export default function Home() {
   const t = copy[language];
 
   useEffect(() => {
-    const initData = getTelegramInitData();
-    if (!initData) return;
-    authenticateTelegram(initData)
-      .then(async (token) => {
-        const [user, pendingTasks, completedTasks] = await Promise.all([
-          loadCurrentUser(token),
-          loadTasks(token),
-          loadTasks(token, 'completed'),
-        ]);
-        setAccessToken(token);
-        setLanguage(user.language);
-        const resolvedName = user.display_name || user.first_name || (user.language === 'ru' ? 'Капитан' : 'Captain');
-        setProfileName(resolvedName);
-        setNameDraft(resolvedName);
-        setTasks([...pendingTasks, ...completedTasks].map(fromApiTask));
-        setTimezoneOffset(user.timezone_offset_minutes);
-        setDigestHour(user.daily_digest_hour);
-        setDigestEnabled(user.daily_digest_enabled);
-        setStreak(user.streak_count);
-        setSyncState('live');
-      })
-      .catch(() => setSyncState('error'));
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const initData = getTelegramInitData();
+      const key = cacheKeyFor(initData);
+      const cached = readSnapshot(key);
+      if (cached) {
+        setTasks(cached.tasks);
+        setLanguage(cached.language);
+        setProfileName(cached.profileName);
+        setNameDraft(cached.profileName);
+        setTimezoneOffset(cached.timezoneOffset);
+        setDigestHour(cached.digestHour);
+        setDigestEnabled(cached.digestEnabled);
+        setStreak(cached.streak);
+        setDark(cached.dark);
+        setFocusSeconds(cached.focusSeconds);
+        setFocusTaskId(cached.focusTaskId);
+        document.documentElement.classList.toggle('dark', cached.dark);
+      }
+      setStorageKey(key);
+      setCacheReady(true);
+      if (!initData) {
+        setSyncState('local');
+        return;
+      }
+      setSyncState('connecting');
+      authenticateTelegram(initData)
+        .then(async (token) => {
+          const [user, pendingTasks, completedTasks] = await Promise.all([
+            loadCurrentUser(token),
+            loadTasks(token),
+            loadTasks(token, 'completed'),
+          ]);
+          if (cancelled) return;
+          setAccessToken(token);
+          setLanguage(user.language);
+          const resolvedName = user.display_name || user.first_name || (user.language === 'ru' ? 'Капитан' : 'Captain');
+          setProfileName(resolvedName);
+          setNameDraft(resolvedName);
+          setTasks([...pendingTasks, ...completedTasks].map(fromApiTask));
+          setTimezoneOffset(user.timezone_offset_minutes);
+          setDigestHour(user.daily_digest_hour);
+          setDigestEnabled(user.daily_digest_enabled);
+          setStreak(user.streak_count);
+          setSyncState('live');
+        })
+        .catch(() => {
+          if (!cancelled) setSyncState(cached ? 'local' : 'error');
+        });
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!storageKey || !cacheReady) return;
+    const snapshot: LocalSnapshot = {
+      tasks,
+      language,
+      profileName,
+      timezoneOffset,
+      digestHour,
+      digestEnabled,
+      streak,
+      dark,
+      focusSeconds,
+      focusTaskId,
+    };
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+    } catch {
+      // Server synchronization remains the source of truth when device storage is unavailable.
+    }
+  }, [cacheReady, dark, digestEnabled, digestHour, focusSeconds, focusTaskId, language, profileName, storageKey, streak, tasks, timezoneOffset]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -220,6 +336,10 @@ export default function Home() {
   const plannedToday = completedToday + pendingToday;
   const progress = plannedToday === 0 ? 0 : Math.round((completedToday / plannedToday) * 100);
   const pendingTasks = tasks.filter((task) => !task.completed);
+  const recentCompletedTasks = tasks
+    .filter((task) => task.completed)
+    .sort((left, right) => new Date(right.completedAt || 0).getTime() - new Date(left.completedAt || 0).getTime())
+    .slice(0, 3);
   const focusTask = pendingTasks.find((task) => task.id === focusTaskId) || pendingTasks[0];
   const upcomingTasks = pendingTasks
     .filter((task) => task.dueAt && new Date(task.dueAt).getTime() >= now)
@@ -475,7 +595,22 @@ export default function Home() {
             )}
           </div>
 
-          <div className={`mx-auto mt-6 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs ${syncState === 'error' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}><span className={`size-1.5 rounded-full ${syncState === 'connecting' ? 'animate-pulse bg-amber-400' : syncState === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />{syncState === 'live' ? t.synced : syncState === 'demo' ? t.demo : syncState === 'connecting' ? t.connecting : t.error}</div>
+          {recentCompletedTasks.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-emerald-500/15 bg-emerald-500/[.045] p-4">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="size-4" /><h2 className="text-sm font-semibold">{t.recentCompleted}</h2></div>
+              <div className="mt-3 space-y-2">
+                {recentCompletedTasks.map((task) => (
+                  <div key={task.id} className="flex items-center gap-3 rounded-xl bg-background/80 p-3">
+                    <span className={`size-2.5 shrink-0 rounded-full ${categoryColor(task.category)}`} />
+                    <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground line-through">{task.title}</span>
+                    <Button variant="ghost" size="sm" onClick={() => void toggleTask(task.id, false)} className="shrink-0 rounded-lg text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300"><RotateCcw />{t.restore}</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className={`mx-auto mt-6 flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs ${syncState === 'error' ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}><span className={`size-1.5 rounded-full ${syncState === 'connecting' ? 'animate-pulse bg-amber-400' : syncState === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />{syncState === 'live' ? t.synced : syncState === 'local' ? t.local : syncState === 'connecting' ? t.connecting : t.error}</div>
         </section>
 
         <nav className="fixed inset-x-4 bottom-4 z-30 mx-auto flex h-16 max-w-[420px] items-center justify-around rounded-[1.35rem] border border-border/80 bg-background/94 px-3 shadow-[0_18px_50px_-18px_rgba(15,23,42,.45)] backdrop-blur-xl" aria-label="Quick actions">
